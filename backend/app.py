@@ -1,9 +1,14 @@
 from models import Kullanici, Ihale, Teklif
-
+from db import connection
 from flask import Flask, jsonify,request
 
 app = Flask(__name__)
-
+def get_db_connection():
+    return cx_Oracle.connect(
+        user="system",
+        password="admin3428",
+        dsn="localhost/XEPDB1"
+    )
 kullanicilar = []
 ihaleler = []
 teklifler = []
@@ -18,15 +23,18 @@ def home():
 
 @app.route('/kullanicilar', methods=['GET'])
 def get_kullanicilar():
-    return jsonify([
-        {
-            "id": k.id,
-            "isim": k.isim,
-            "email": k.email
-        }
-        for k in kullanicilar
-    ])
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, isim, email FROM kullanicilar")
 
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return jsonify([
+        {"id": r[0], "isim": r[1], "email": r[2]}
+        for r in rows
+    ])
 @app.route('/ihaleler', methods=['GET'])
 def get_ihaleler():
     return jsonify([
