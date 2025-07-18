@@ -1,136 +1,134 @@
-from models import Kullanici, Ihale, Teklif
-from db import connection
-from flask import Flask, jsonify,request
+from flask import Flask, jsonify, request
+from db import (
+    get_teklifler_by_ihale_id,
+    get_all_kullanicilar,
+    insert_kullanici,
+    insert_ihale,
+    insert_teklif,
+    get_all_ihaleler,
+    get_kazananlar 
+)
 
 app = Flask(__name__)
-def get_db_connection():
-    return cx_Oracle.connect(
-        user="system",
-        password="admin3428",
-        dsn="localhost/XEPDB1"
-    )
-kullanicilar = []
-ihaleler = []
-teklifler = []
-
-kullanici1 = Kullanici("Ali can", "ali@example.com")
-kullanicilar.append(kullanici1)
 
 @app.route('/')
-
 def home():
     return jsonify(message="E-Ihale sistemi basariyla calisiyor!")
 
 @app.route('/kullanicilar', methods=['GET'])
 def get_kullanicilar():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, isim, email FROM kullanicilar")
-
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    return jsonify([
-        {"id": r[0], "isim": r[1], "email": r[2]}
-        for r in rows
-    ])
-@app.route('/ihaleler', methods=['GET'])
-def get_ihaleler():
-    return jsonify([
-        {
-            "id": i.id,
-            "baslik": i.baslik,
-            "aciklama": i.aciklama,
-            "baslangic_tarihi": i.baslangic_tarihi,
-            "bitis_tarihi": i.bitis_tarihi,
-            "olusturan_id": i.olusturan_id
-        }
-        for i in ihaleler
-    ])
-
-@app.route('/ihale', methods=['POST'])
-def create_ihale():
-    data = request.get_json()
-    yeni_ihale = Ihale(
-        baslik=data['baslik'],
-        aciklama=data['aciklama'],
-        baslangic_tarihi=data['baslangic_tarihi'],
-        bitis_tarihi=data['bitis_tarihi'],
-        olusturan_id=data['olusturan_id']
-    )
-    ihaleler.append(yeni_ihale)
-    return jsonify({"message": "Ihale olusturuldu", "id": yeni_ihale.id}), 201
+    try:
+        kullanicilar = get_all_kullanicilar()
+        return jsonify([
+            {"id": k[0], "isim": k[1], "email": k[2]}
+            for k in kullanicilar
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/kullanici', methods=['POST'])
 def yeni_kullanici_ekle():
-    veri = request.json
+    veri = request.get_json()
     isim = veri.get("isim")
     email = veri.get("email")
 
     if not isim or not email:
         return jsonify({"message": "İsim ve email gerekli"}), 400
 
-    yeni_k = Kullanici(isim, email)
-    kullanicilar.append(yeni_k)
+    try:
+        user_id = insert_kullanici(isim, email)
+        return jsonify({"message": "Kullanici eklendi", "id": user_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return jsonify({
-        "message": "Kullanici basariyla eklendi",
-        "id": yeni_k.id
-    }), 201
+@app.route('/ihale', methods=['POST'])
+def yeni_ihale_ekle():
+    veri = request.get_json()
+    try:
+        ihale_id = insert_ihale(
+            veri["baslik"],
+            veri["aciklama"],
+            veri["baslangic_tarihi"],
+            veri["bitis_tarihi"],
+            veri["olusturan_id"]
+        )
+        return jsonify({"message": "Ihale eklendi", "id": ihale_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/teklif', methods=['POST'])
-def teklif_ver():
-    veri = request.json
-    ihale_id = veri.get("ihale_id")
-    kullanici_id = veri.get("kullanici_id")
-    tutar = veri.get("tutar")
+def yeni_teklif_ekle():
+    veri = request.get_json()
+    try:
+        teklif_id = insert_teklif(
+            veri["ihale_id"],
+            veri["kullanici_id"],
+            veri["tutar"]
+        )
+        return jsonify({"message": "Teklif eklendi", "id": teklif_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    if not ihale_id or not kullanici_id or not tutar:
-        return jsonify({"message": "Eksik bilgi"}), 400
+@app.route('/ihaleler/<ihale_id>/teklifler', methods=['GET'])
+def get_teklifler_by_ihale(ihale_id):
+    try:
+        teklifler = get_teklifler_by_ihale_id(ihale_id)
+        if not teklifler:
+            return jsonify({"message": "Bu ihaleye ait teklif bulunamadi"}), 404
 
-    ihale = next((i for i in ihaleler if i.id == ihale_id), None)
-    kullanici = next((k for k in kullanicilar if k.id == kullanici_id), None)
+        return jsonify([
+            {
+                "teklif_id": t[0],
+                "ihale_id": t[1],
+                "kullanici_id": t[2],
+                "tutar": t[3],
+                "tarih": str(t[4])
+            }
+            for t in teklifler
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    from db import get_all_ihaleler  # Üste ekle
 
-    if not ihale or not kullanici:
-        return jsonify({"message": "İhale veya kullanici bulunamadi"}), 404
+@app.route('/ihaleler', methods=['GET'])
+def tum_ihaleleri_getir():
+    try:
+        ihaleler = get_all_ihaleler()
+        return jsonify([
+            {
+                "id": i[0],
+                "baslik": i[1],
+                "aciklama": i[2],
+                "baslangic_tarihi": str(i[3]),
+                "bitis_tarihi": str(i[4]),
+                "olusturan_id": i[5]
+            }
+            for i in ihaleler
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/kazananlar', methods=['GET'])
+def kazananlari_getir():
+    try:
+        kazananlar = get_kazananlar()
+        if not kazananlar:
+            return jsonify({"message": "Henuz kazanan yok"}), 404
 
-    yeni_teklif = Teklif(ihale_id, kullanici_id, tutar)
-    teklifler.append(yeni_teklif)
+        return jsonify([
+            {
+                "ihale_id": k[0],
+                "teklif_id": k[1],
+                "kullanici_id": k[2],
+                "teklif_miktari": k[3],
+                "baslik": k[4],
+                "bitis_tarihi": str(k[5])
+            }
+            for k in kazananlar
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return jsonify({
-        "message": "Teklif basariyla verildi",
-        "id": yeni_teklif.id
-    }), 201
-@app.route('/teklifler', methods=['GET'])
-def get_teklifler():
-    return jsonify([
-        {
-            "id": t.id,
-            "ihale_id": t.ihale_id,
-            "kullanici_id": t.kullanici_id,
-            "tutar": t.tutar
-        }
-        for t in teklifler
-    ])
-@app.route('/kazanan/<ihale_id>', methods=['GET'])
-def kazanan_teklif(ihale_id):
-   
-    ilgili_teklifler = [t for t in teklifler if t.ihale_id == ihale_id]
-
-   
-    if not ilgili_teklifler:
-        return jsonify({"message": "Bu ihaleye ait teklif bulunamadi"}), 404
-
- 
-    en_yuksek = max(ilgili_teklifler, key=lambda t: t.tutar)
-
-    return jsonify({
-        "kazanan_teklif_id": en_yuksek.id,
-        "kullanici_id": en_yuksek.kullanici_id,
-        "ihale_id": en_yuksek.ihale_id,
-        "tutar": en_yuksek.tutar
-    })
 
 if __name__ == '__main__':
     app.run(debug=True)
