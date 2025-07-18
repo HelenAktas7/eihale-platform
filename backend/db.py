@@ -8,22 +8,30 @@ connection = oracledb.connect(
     dsn="localhost:1521/XEPDB1"
 )
 
-def insert_kullanici(isim, email):
+def insert_kullanici(isim, email, sifre, rol):
     try:
-        cursor = connection.cursor()
         user_id = str(uuid.uuid4())
+        connection = oracledb.connect(
+            user="system",
+            password="34281",
+            dsn="localhost:1521/XEPDB1"
+        )
+        cursor = connection.cursor()
+
         cursor.execute("""
-            INSERT INTO kullanicilar (id, isim, email)
-            VALUES (:1, :2, :3)
-        """, (user_id, isim, email))
+            INSERT INTO KULLANICILAR (ID, ISIM, EMAIL, SIFRE, ROL)
+            VALUES (:1, :2, :3, :4, :5)
+        """, (user_id, isim, email, sifre, rol))
+
         connection.commit()
-        print("Kullanici basariyla eklendi.ID:",user_id)
+        cursor.close()
+        connection.close()
         return user_id
-    except oracledb.Error as e:
-        print("Hata olustu:", e)
-    finally:
-        if cursor:
-            cursor.close()
+    except Exception as e:
+        print("Hata:", e)
+        raise e
+
+   
 
 def insert_ihale(baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id):
     try:
@@ -118,6 +126,16 @@ def get_kazananlar():
     except Exception as e:
         print("Hata:", e)
         return []
+    
+def get_db_connection():
+    return oracledb.connect(
+        user="system",
+        password="34281",
+        dsn="localhost:1521/XEPDB1"
+    )
+
+
+    
 
     
 

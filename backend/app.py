@@ -1,13 +1,54 @@
+import jwt
+import datetime
+from functools import wraps
 from flask import Flask, jsonify, request
+def token_gerektiriyor(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            if auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+
+        if not token:
+            return jsonify({"message": "Token gerekli"}), 401
+
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            request.kullanici = data  # kullanıcının verileri artık burada
+        except jwt.ExpiredSignatureError:
+            return jsonify({"message": "Token süresi dolmuş"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"message": "Geçersiz token"}), 401
+
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_gerektiriyor(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not hasattr(request, "kullanici"):
+            return jsonify({"message": "Yetkisiz erişim"}), 403
+
+        if request.kullanici.get("rol") != "admin":
+            return jsonify({"message": "Admin yetkisi gerekli"}), 403
+
+        return f(*args, **kwargs)
+    return decorated
+
 from db import (
+    get_db_connection,
     get_teklifler_by_ihale_id,
     get_all_kullanicilar,
     insert_kullanici,
     insert_ihale,
     insert_teklif,
     get_all_ihaleler,
-    get_kazananlar 
+    get_kazananlar
 )
+
+SECRET_KEY = 'cok-gizli-anahtarim'
 
 app = Flask(__name__)
 
@@ -27,21 +68,26 @@ def get_kullanicilar():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/kullanici', methods=['POST'])
+@token_gerektiriyor
 def yeni_kullanici_ekle():
     veri = request.get_json()
     isim = veri.get("isim")
     email = veri.get("email")
+    sifre = veri.get("sifre")
+    rol = veri.get("rol", "kullanici")
 
-    if not isim or not email:
-        return jsonify({"message": "İsim ve email gerekli"}), 400
+    if not isim or not email or not sifre:
+        return jsonify({"message": "İsim, email ve şifre gerekli"}), 400
 
     try:
-        user_id = insert_kullanici(isim, email)
+        user_id = insert_kullanici(isim, email, sifre, rol)
         return jsonify({"message": "Kullanici eklendi", "id": user_id}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/ihale', methods=['POST'])
+@token_gerektiriyor
+
 def yeni_ihale_ekle():
     veri = request.get_json()
     try:
@@ -57,6 +103,7 @@ def yeni_ihale_ekle():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/teklif', methods=['POST'])
+
 def yeni_teklif_ekle():
     veri = request.get_json()
     try:
@@ -88,7 +135,6 @@ def get_teklifler_by_ihale(ihale_id):
         ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    from db import get_all_ihaleler  # Üste ekle
 
 @app.route('/ihaleler', methods=['GET'])
 def tum_ihaleleri_getir():
@@ -107,7 +153,7 @@ def tum_ihaleleri_getir():
         ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
 @app.route('/kazananlar', methods=['GET'])
 def kazananlari_getir():
     try:
@@ -125,6 +171,59 @@ def kazananlari_getir():
                 "bitis_tarihi": str(k[5])
             }
             for k in kazananlar
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/giris', methods=['POST'])
+def kullanici_giris():
+    veri = request.get_json()
+    email = veri.get("email")
+    sifre = veri.get("sifre")
+
+    if not email or not sifre:
+        return jsonify({"message": "Email ve sifre gerekli"}), 400
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT id, isim, rol FROM kullanicilar 
+            WHERE email = :1 AND sifre = :2
+        """, (email, sifre))
+
+        sonuc = cursor.fetchone()
+        cursor.close()
+        connection.close()
+
+        if sonuc:
+            user_id, isim, rol = sonuc
+
+            token = jwt.encode({
+                "id": user_id,
+                "isim": isim,
+                "rol": rol,
+                "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+            }, SECRET_KEY, algorithm="HS256")
+
+            return jsonify({"token": token})
+
+        else:
+            return jsonify({"message": "Email veya sifre hatali"}), 401
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/admin/kullanicilar', methods=['GET'])
+@token_gerektiriyor
+@admin_gerektiriyor
+def admin_kullanicilari_gor():
+    try:
+        kullanicilar = get_all_kullanicilar()
+        return jsonify([
+            {"id": k[0], "isim": k[1], "email": k[2]}
+            for k in kullanicilar
         ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
