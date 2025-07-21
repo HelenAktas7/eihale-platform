@@ -162,6 +162,21 @@ def get_ihaleler_by_kullanici_id(kullanici_id):
     except Exception as e:
         print("Hata:", e)
         return []
+    
+def get_ihaleler_by_teklif_veren(kullanici_id):
+    try:
+        cursor = connection.cursor()
+        query = """
+        SELECT DISTINCT i.id, i.baslik, i.aciklama, i.baslangic_tarihi, i.bitis_tarihi, i.olusturan_id
+        FROM ihaleler i
+        JOIN teklifler t ON i.id = t.ihale_id
+        WHERE t.kullanici_id = :1
+        """
+        cursor.execute(query, (kullanici_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        print("Hata:", e)
+        return []
 
 
 
