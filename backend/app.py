@@ -2,28 +2,27 @@ import jwt
 import datetime
 from functools import wraps
 from flask import Flask, jsonify, request
+from teklif_services import get_teklifler_by_kullanici_id
+
 def token_gerektiriyor(f):
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorator(*args, **kwargs):
         token = None
-        if 'Authorization' in request.headers:
-            auth_header = request.headers['Authorization']
-            if auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]
-
+        if "Authorization" in request.headers:
+            token = request.headers["Authorization"].split(" ")[1]
         if not token:
-            return jsonify({"message": "Token gerekli"}), 401
-
+            return jsonify({"error": "Token bulunamadi"}), 401
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            request.kullanici = data  # kullanıcının verileri artık burada
-        except jwt.ExpiredSignatureError:
-            return jsonify({"message": "Token süresi dolmuş"}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({"message": "Geçersiz token"}), 401
+            current_user = {
+                "id": data["id"],
+                "rol": data["rol"]
+            }
+        except Exception as e:
+            return jsonify({"error": "Token geçersiz"}), 403
+        return f(current_user, *args, **kwargs)
+    return decorator
 
-        return f(*args, **kwargs)
-    return decorated
 
 def admin_gerektiriyor(f):
     @wraps(f)
@@ -227,6 +226,23 @@ def admin_kullanicilari_gor():
         ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/kullanici/teklifler', methods=['GET'])
+@token_gerektiriyor 
+def kullanici_tekliflerini_gor(current_user): 
+    try:
+        teklifler = get_teklifler_by_kullanici_id(current_user["id"])  
+        return jsonify([
+            {
+                "id": t[0],
+                "ihale_id": t[1],
+                "teklif_tutari": t[2],
+                "teklif_tarihi": str(t[3]) 
+            } for t in teklifler
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 if __name__ == '__main__':

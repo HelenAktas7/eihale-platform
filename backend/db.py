@@ -58,13 +58,14 @@ def insert_teklif(teklif_miktari, ihale_id, teklif_veren_id):
             VALUES (:1, :2, :3, :4)
         """, (teklif_id, teklif_miktari, ihale_id, teklif_veren_id))
         connection.commit()
-        print("Teklif basariyla eklendi.",teklif_id)
-        return teklif_id
+   
+      
     except oracledb.Error as e:
         print("Hata olustu:", e)
     finally:
         if cursor:
             cursor.close()
+    return teklif_id           
 
 def get_teklifler_by_ihale_id(ihale_id):
     try:
