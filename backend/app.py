@@ -5,7 +5,7 @@ from flask import Flask, jsonify, request
 from teklif_services import get_teklifler_by_kullanici_id
 from db import get_ihale_by_id
 from db import get_ihaleler_by_kullanici_id
-
+from db import get_ihaleler_by_teklif_veren
 
 def token_gerektiriyor(f):
     @wraps(f)
@@ -284,6 +284,25 @@ def kullanicinin_ihaleleri(current_user):
         ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/kullanici/katildigi-ihaleler', methods=['GET'])
+@token_gerektiriyor
+def kullanici_katildigi_ihaleleri_gor(current_user):
+    try:
+        ihaleler = get_ihaleler_by_teklif_veren(current_user["id"])
+        return jsonify([
+            {
+                "id": i[0],
+                "baslik": i[1],
+                "aciklama": i[2],
+                "baslangic_tarihi": str(i[3]),
+                "bitis_tarihi": str(i[4]),
+                "olusturan_id": i[5]
+            }
+            for i in ihaleler
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500    
 
 
 
