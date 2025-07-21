@@ -1,15 +1,26 @@
 # eihale-platform
 Gerçek zamanlı e-ihale sistemi
+Bu proje, bir e-ihale (elektronik ihale) sistemidir. Kullanıcılar sisteme kayıt olabilir, ihaleler oluşturabilir ve teklif verebilirler. Admin yetkisine sahip kullanıcılar tüm kullanıcıları görebilir. Her kullanıcı sadece kendi teklif ve ihalelerini görüntüleyebilir.
 
-16-07-2025
-- Python + Flask ortamı kuruldu
-- `models.py` dosyasında Kullanici, Ihale, Teklif sınıfları yazıldı
-- Aşağıdaki endpointler geliştirildi:
-  - `GET /kullanicilar`
-  - `POST /kullanici`
-  - `GET /ihaleler`
-  - `POST /ihale`
-  - `POST /teklif`
-  - `GET /kazanan/<ihale_id>`
-- Postman üzerinden testler yapıldı
-- Git ve GitHub bağlantısı yapıldı, commit atıldı
+Bu proje Python-Flask backend ve Oracle veritabanı ile geliştirilmiştir.
+
+## Kullanılan Teknolojiler
+
+- Python (Flask)
+- Oracle Database (Docker container içinde)
+- JWT ile Kimlik Doğrulama
+- Postman (API testleri için)
+- Docker (veritabanı ortamı için)
+- GitHub (sürüm kontrolü)
+
+## Özellikler
+
+- ✅ Kullanıcı kaydı ve girişi
+- ✅ JWT tabanlı oturum yönetimi
+- ✅ İhale oluşturma
+- ✅ Teklif verme
+- ✅ Kullanıcıya özel ihale ve teklif görüntüleme
+- ✅ Katıldığı ihaleleri listeleme
+- ✅ Kazanan teklifleri listeleme
+- ✅ Admin paneli
+
