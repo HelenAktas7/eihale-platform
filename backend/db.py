@@ -43,6 +43,7 @@ def insert_ihale(baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id)
         """, (ihale_id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id))
         connection.commit()
         print("İhale basariyla eklendi.İhale id:",ihale_id,"olusturan id :",olusturan_id)
+        return ihale_id
     except oracledb.Error as e:
         print("Hata olustu:", e)
     finally:
@@ -148,6 +149,20 @@ def get_ihale_by_id(ihale_id):
     except Exception as e:
         print("Hata:", e)
         return None
+    
+def get_ihaleler_by_kullanici_id(kullanici_id):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id
+            FROM ihaleler
+            WHERE olusturan_id = :1
+        """, (kullanici_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        print("Hata:", e)
+        return []
+
 
 
 

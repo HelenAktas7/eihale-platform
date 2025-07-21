@@ -4,6 +4,8 @@ from functools import wraps
 from flask import Flask, jsonify, request
 from teklif_services import get_teklifler_by_kullanici_id
 from db import get_ihale_by_id
+from db import get_ihaleler_by_kullanici_id
+
 
 def token_gerektiriyor(f):
     @wraps(f)
@@ -88,15 +90,16 @@ def yeni_kullanici_ekle():
 @app.route('/ihale', methods=['POST'])
 @token_gerektiriyor
 
-def yeni_ihale_ekle():
+def yeni_ihale_ekle(current_user):
     veri = request.get_json()
-    try:
+    try: 
+        data=request.get_json()
         ihale_id = insert_ihale(
             veri["baslik"],
             veri["aciklama"],
             veri["baslangic_tarihi"],
             veri["bitis_tarihi"],
-            veri["olusturan_id"]
+            current_user["id"]
         )
         return jsonify({"message": "Ihale eklendi", "id": ihale_id}), 201
     except Exception as e:
@@ -260,6 +263,25 @@ def ihale_detaylarini_gor(ihale_id):
             "bitis_tarihi": str(ihale[4]),
             "olusturan_id": ihale[5]
         })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/kullanici/ihaleler', methods=['GET'])
+@token_gerektiriyor
+def kullanicinin_ihaleleri(current_user):
+    try:
+        ihaleler = get_ihaleler_by_kullanici_id(current_user["id"])
+        return jsonify([
+            {
+                "id": i[0],
+                "baslik": i[1],
+                "aciklama": i[2],
+                "baslangic_tarihi": str(i[3]),
+                "bitis_tarihi": str(i[4]),
+                "olusturan_id": i[5]
+            }
+            for i in ihaleler
+        ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
