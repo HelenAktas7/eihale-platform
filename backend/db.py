@@ -135,6 +135,21 @@ def get_db_connection():
         dsn="localhost:1521/XEPDB1"
     )
 
+def get_ihale_by_id(ihale_id):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id
+            FROM ihaleler
+            WHERE id = :1
+        """, (ihale_id,))
+        ihale = cursor.fetchone()
+        return ihale
+    except Exception as e:
+        print("Hata:", e)
+        return None
+
+
 
     
 

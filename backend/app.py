@@ -3,6 +3,7 @@ import datetime
 from functools import wraps
 from flask import Flask, jsonify, request
 from teklif_services import get_teklifler_by_kullanici_id
+from db import get_ihale_by_id
 
 def token_gerektiriyor(f):
     @wraps(f)
@@ -242,6 +243,27 @@ def kullanici_tekliflerini_gor(current_user):
         ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/ihale/<ihale_id>', methods=['GET'])
+def ihale_detaylarini_gor(ihale_id):
+    try:
+        ihale = get_ihale_by_id(ihale_id)
+        if not ihale:
+            return jsonify({"message": "Ihale bulunamadi"}), 404
+
+        return jsonify({
+            "id": ihale[0],
+            "baslik": ihale[1],
+            "aciklama": ihale[2],
+            "baslangic_tarihi": str(ihale[3]),
+            "bitis_tarihi": str(ihale[4]),
+            "olusturan_id": ihale[5]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 
 
 
