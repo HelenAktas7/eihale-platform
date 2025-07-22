@@ -1,6 +1,7 @@
 import oracledb
 import uuid
 import datetime
+from datetime import datetime
 
 connection = oracledb.connect(
     user="system",
@@ -50,23 +51,52 @@ def insert_ihale(baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id)
         if cursor:
             cursor.close()
 
-def insert_teklif(teklif_miktari, ihale_id, teklif_veren_id):
+def insert_teklif(ihale_id, kullanici_id, teklif_miktari, teklif_tarihi):
     try:
-        cursor = connection.cursor()
-        teklif_id = str(uuid.uuid4())
-        cursor.execute("""
-            INSERT INTO teklifler (id, teklif_miktari, ihale_id, kullanici_id)
-            VALUES (:1, :2, :3, :4)
-        """, (teklif_id, teklif_miktari, ihale_id, teklif_veren_id))
-        connection.commit()
-   
-      
-    except oracledb.Error as e:
-        print("Hata olustu:", e)
-    finally:
-        if cursor:
-            cursor.close()
-    return teklif_id           
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT OLUSTURAN_ID, BITIS_TARIHI
+                FROM IHALELER
+                WHERE ID = :id
+            """, {"id": str(ihale_id).strip()})
+            
+            result = cursor.fetchone()
+
+            if not result:
+                return {"hata": "İhale bulunamadi"}
+
+            ihale_olusturan_id = result[0]
+            bitis_tarihi = result[1]
+
+          
+            if ihale_olusturan_id == kullanici_id:
+                return {"hata": "Kendi ihalenize teklif veremezsiniz"}
+
+           
+            su_an = datetime.now()
+            if bitis_tarihi <= su_an:
+                return {"hata": "Bu ihalenin süresi dolmuştur, teklif veremezsiniz."}
+
+            teklif_uuid = str(uuid.uuid4())
+
+            cursor.execute("""
+                INSERT INTO TEKLIFLER (ID, IHALE_ID, KULLANICI_ID, TEKLIF_MIKTARI, TEKLIF_TARIHI)
+                VALUES (:id, :ihale_id, :kullanici_id, :miktar, TO_DATE(:tarih, 'YYYY-MM-DD'))
+            """, {
+                "id": teklif_uuid,
+                "ihale_id": ihale_id,
+                "kullanici_id": kullanici_id,
+                "miktar": teklif_miktari,
+                "tarih": teklif_tarihi  
+            })
+
+            connection.commit()
+            return teklif_uuid
+    except Exception as e:
+        print("Hata (insert_teklif):", e)
+        return {"hata": str(e)}
+
+        
 
 def get_teklifler_by_ihale_id(ihale_id):
     try:
@@ -218,6 +248,35 @@ def get_ihale_detay(ihale_id):
     except Exception as e:
         print("Hata (get_ihale_detay):", e)
         return None
+
+def get_aktif_ihaleler():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT ID, BASLIK, ACIKLAMA, BITIS_TARIHI
+                FROM IHALELER
+                WHERE BITIS_TARIHI > SYSDATE
+                ORDER BY BITIS_TARIHI ASC
+            """)
+            return cursor.fetchall()
+    except Exception as e:
+        print("Hata (get_aktif_ihaleler):", e)
+        return []
+
+def get_suresi_gecmis_ihaleler():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT ID, BASLIK, ACIKLAMA, BITIS_TARIHI
+                FROM IHALELER
+                WHERE BITIS_TARIHI <= SYSDATE
+                ORDER BY BITIS_TARIHI DESC
+            """)
+            return cursor.fetchall()
+    except Exception as e:
+        print("Hata (get_suresi_gecmis_ihaleler):", e)
+        return []
+
 
 
 
