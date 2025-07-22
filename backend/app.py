@@ -6,6 +6,7 @@ from teklif_services import get_teklifler_by_kullanici_id
 from db import get_ihale_by_id
 from db import get_ihaleler_by_kullanici_id
 from db import get_ihaleler_by_teklif_veren
+from db import get_ihale_detay
 
 def token_gerektiriyor(f):
     @wraps(f)
@@ -302,7 +303,20 @@ def kullanici_katildigi_ihaleleri_gor(current_user):
             for i in ihaleler
         ])
     except Exception as e:
-        return jsonify({"error": str(e)}), 500    
+        return jsonify({"error": str(e)}), 500  
+     
+@app.route('/ihale/<ihale_id>/detay', methods=['GET'])
+def ihale_detay(ihale_id):
+    try:
+        print("GELEN ID:", ihale_id)  
+        detay = get_ihale_detay(ihale_id) 
+        if detay:
+            return jsonify(detay), 200 
+        else:
+            return jsonify({"hata": "İhale bulunamadi"}), 404  
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500   
+
 
 
 
