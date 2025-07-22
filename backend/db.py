@@ -177,6 +177,50 @@ def get_ihaleler_by_teklif_veren(kullanici_id):
     except Exception as e:
         print("Hata:", e)
         return []
+    
+def get_ihale_detay(ihale_id):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    i.ID,
+                    i.BASLIK,
+                    i.ACIKLAMA,
+                    i.BITIS_TARIHI,
+                    (
+                        SELECT MAX(t.TEKLIF_MIKTARI)
+                        FROM TEKLIFLER t
+                        WHERE t.IHALE_ID = i.ID
+                    ) AS en_yuksek_teklif,
+                    (
+                        SELECT COUNT(DISTINCT t.KULLANICI_ID)
+                        FROM TEKLIFLER t
+                        WHERE t.IHALE_ID = i.ID
+                    ) AS katilimci_sayisi
+                FROM IHALELER i
+                WHERE LOWER(i.ID) = LOWER(:id)
+            """, {"id": str(ihale_id).strip()})
+
+            result = cursor.fetchone()
+
+            if result:
+                return {
+                    "ihale_id": result[0],
+                    "baslik": result[1],
+                    "aciklama": result[2],
+                    "bitis_tarihi": str(result[3]),
+                    "en_yuksek_teklif": float(result[4]) if result[4] is not None else 0.0,
+                    "katilimci_sayisi": int(result[5]) if result[5] is not None else 0
+                }
+            else:
+                print(f"ID bulunamadi: {ihale_id}")
+                return None
+    except Exception as e:
+        print("Hata (get_ihale_detay):", e)
+        return None
+
+
+
 
 
 
