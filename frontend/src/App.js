@@ -3,15 +3,17 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
 import UserPanel from "./pages/UserPanel";
-import ProtectedRoute from "./components/ProtectedRoute"; // EKLENDİ
+import ProtectedRoute from "./components/ProtectedRoute";
+import Navbar from "./components/Navbar";
+import IhaleDetay from "./components/IhaleDetay";
 
 function App() {
   return (
     <Router>
+      <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/giris" element={<Login />} />
-
         <Route
           path="/admin"
           element={
@@ -20,7 +22,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/kullanici"
           element={
@@ -35,5 +36,3 @@ function App() {
 }
 
 export default App;
-
-

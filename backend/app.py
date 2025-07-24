@@ -3,12 +3,8 @@ import datetime
 from functools import wraps
 from flask import Flask, jsonify, request
 from teklif_services import get_teklifler_by_kullanici_id
-from db import get_ihale_by_id
-from db import get_ihaleler_by_kullanici_id
-from db import get_ihaleler_by_teklif_veren
-from db import get_ihale_detay
-from db import get_aktif_ihaleler
-from db import get_suresi_gecmis_ihaleler
+from flask_cors import CORS
+
 
 def token_gerektiriyor(f):
     @wraps(f)
@@ -50,12 +46,19 @@ from db import (
     insert_ihale,
     insert_teklif,
     get_all_ihaleler,
-    get_kazananlar
+    get_kazananlar,
+    get_ihale_by_id,
+    get_ihaleler_by_teklif_veren,
+    get_ihale_detay,
+    get_aktif_ihaleler,
+    get_suresi_gecmis_ihaleler,
+    get_ihaleler_by_kullanici_id
 )
 
 SECRET_KEY = 'cok-gizli-anahtarim'
 
 app = Flask(__name__)
+CORS(app) 
 
 @app.route('/')
 def home():
@@ -322,6 +325,7 @@ def ihale_detay(ihale_id):
             return jsonify({"hata": "İhale bulunamadi"}), 404  
     except Exception as e:
         return jsonify({"hata": str(e)}), 500   
+    
 @app.route('/ihaleler/aktif', methods=['GET'])
 def aktif_ihaleleri_getir():
     try:
