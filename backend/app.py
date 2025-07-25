@@ -52,7 +52,8 @@ from db import (
     get_ihale_detay,
     get_aktif_ihaleler,
     get_suresi_gecmis_ihaleler,
-    get_ihaleler_by_kullanici_id
+    get_ihaleler_by_kullanici_id,
+    get_teklifler_by_ihale_id
 )
 
 SECRET_KEY = 'cok-gizli-anahtarim'
@@ -357,11 +358,14 @@ def gecmis_ihaleleri_getir():
         ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-
-
-
-
+    
+@app.route('/ihale/<ihale_id>/teklifler', methods=["GET"])
+def get_teklifler_for_ihale(ihale_id):
+    try:
+     teklifler=get_teklifler_by_ihale_id(ihale_id)
+     return jsonify(teklifler) 
+    except Exception as e:
+           print("Hata (teklif listeleme):",e)
+           return jsonify({"error ": str(e)}),500
 if __name__ == '__main__':
     app.run(debug=True)

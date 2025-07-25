@@ -30,6 +30,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/ihale/:id" element={<IhaleDetay />} />
       </Routes>
     </Router>
   );
