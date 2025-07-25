@@ -13,14 +13,3 @@ Bu proje Python-Flask backend ve Oracle veritabanı ile geliştirilmiştir.
 - Docker (veritabanı ortamı için)
 - GitHub (sürüm kontrolü)
 
-## Özellikler
-
-- ✅ Kullanıcı kaydı ve girişi
-- ✅ JWT tabanlı oturum yönetimi
-- ✅ İhale oluşturma
-- ✅ Teklif verme
-- ✅ Kullanıcıya özel ihale ve teklif görüntüleme
-- ✅ Katıldığı ihaleleri listeleme
-- ✅ Kazanan teklifleri listeleme
-- ✅ Admin paneli
-
