@@ -68,11 +68,9 @@ def insert_teklif(ihale_id, kullanici_id, teklif_miktari, teklif_tarihi):
             ihale_olusturan_id = result[0]
             bitis_tarihi = result[1]
 
-          
             if ihale_olusturan_id == kullanici_id:
                 return {"hata": "Kendi ihalenize teklif veremezsiniz"}
 
-           
             su_an = datetime.now()
             if bitis_tarihi <= su_an:
                 return {"hata": "Bu ihalenin süresi dolmuştur, teklif veremezsiniz."}
@@ -81,13 +79,13 @@ def insert_teklif(ihale_id, kullanici_id, teklif_miktari, teklif_tarihi):
 
             cursor.execute("""
                 INSERT INTO TEKLIFLER (ID, IHALE_ID, KULLANICI_ID, TEKLIF_MIKTARI, TEKLIF_TARIHI)
-                VALUES (:id, :ihale_id, :kullanici_id, :miktar, TO_DATE(:tarih, 'YYYY-MM-DD'))
+                VALUES (:id, :ihale_id, :kullanici_id, :miktar, TO_TIMESTAMP(:tarih, 'YYYY-MM-DD"T"HH24:MI:SS.FF3"Z"'))
             """, {
                 "id": teklif_uuid,
                 "ihale_id": ihale_id,
                 "kullanici_id": kullanici_id,
                 "miktar": teklif_miktari,
-                "tarih": teklif_tarihi  
+                "tarih": teklif_tarihi[:23] 
             })
 
             connection.commit()
@@ -95,20 +93,6 @@ def insert_teklif(ihale_id, kullanici_id, teklif_miktari, teklif_tarihi):
     except Exception as e:
         print("Hata (insert_teklif):", e)
         return {"hata": str(e)}
-
-        
-
-def get_teklifler_by_ihale_id(ihale_id):
-    try:
-        cursor=connection.cursor() 
-        query="SELECT * FROM teklifler WHERE ihale_id = :1"
-        cursor.execute(query,[ihale_id])  
-        result=cursor.fetchall()
-        return result
-    except Exception as e:
-        print("Hata : ",e)
-        return[]
-    
 def get_all_kullanicilar():
     try:
         cursor = connection.cursor()
@@ -167,19 +151,14 @@ def get_db_connection():
     )
 
 def get_ihale_by_id(ihale_id):
-    try:
-        cursor = connection.cursor()
+    with connection.cursor() as cursor:
         cursor.execute("""
             SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id
             FROM ihaleler
-            WHERE id = :1
-        """, (ihale_id,))
-        ihale = cursor.fetchone()
-        return ihale
-    except Exception as e:
-        print("Hata:", e)
-        return None
-    
+            WHERE id = :id
+        """, {"id": ihale_id})
+        return cursor.fetchone()
+
 def get_ihaleler_by_kullanici_id(kullanici_id):
     try:
         cursor = connection.cursor()
@@ -276,6 +255,29 @@ def get_suresi_gecmis_ihaleler():
     except Exception as e:
         print("Hata (get_suresi_gecmis_ihaleler):", e)
         return []
+    
+def get_teklifler_by_ihale_id(ihale_id):
+      try:
+         with connection.cursor() as cursor:
+          cursor.execute(""" 
+          SELECT t.id,t.kullanici_id,t.teklif_miktari,TO_CHAR(t.teklif_tarihi,'YYYY-MM-DD HH24:MI:SS')
+          FROM teklifler t 
+          WHERE t.ihale_id =:ihale_id 
+          ORDER BY t.teklif_miktari DESC 
+          """ ,{"ihale_id":ihale_id})
+          rows=cursor.fetchall() 
+          teklifler=[] 
+          for row in rows:
+              teklifler.append({
+          "id":row[0],
+          "kullanici_id":row[1],
+          "miktar":row[2],
+          "tarih":row[3]
+              })
+              return teklifler
+      except Exception as e:
+          print ("DB Hata (get_teklifler_by_ihale_id):",e)
+          return [] 
 
 
 
