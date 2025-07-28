@@ -8,14 +8,17 @@ function IhaleDetay() {
     const [kullaniciId, setKullaniciId] = useState(null);
     const [teklifTutari, setTeklifTutari] = useState("");
     const [teklifler, setTeklifler] = useState([]);
+    const [kazanan, setKazanan] = useState(null);
+
+    const [duzenlemeModu, setDuzenlemeModu] = useState(null);
+    const [guncelTutar, setGuncelTutar] = useState("");
 
     useEffect(() => {
         fetch(`http://localhost:5000/ihale/${id}/teklifler`)
             .then(res => res.json())
             .then(data => setTeklifler(data))
-            .catch(err => console.error("Teklifler Yuklenemedi", err))
-    }, [id]
-    );
+            .catch(err => console.error("Teklifler Yüklenemedi", err));
+    }, [id]);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -24,23 +27,21 @@ function IhaleDetay() {
                 const decoded = jwtDecode(token);
                 setKullaniciId(decoded.id);
             } catch (e) {
-                console.error("Token çözümleme hatasi:", e);
+                console.error("Token çözümleme hatası:", e);
                 localStorage.removeItem("token");
             }
         }
     }, []);
+
     const handleTeklifGonder = async (e) => {
         e.preventDefault();
-
         try {
             const token = localStorage.getItem("token");
             const decoded = jwtDecode(token);
 
             const response = await fetch("http://localhost:5000/teklif", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ihale_id: id,
                     kullanici_id: decoded.id,
@@ -52,10 +53,13 @@ function IhaleDetay() {
             const data = await response.json();
 
             if (response.ok) {
-                alert(" Teklif başarıyla gönderildi!");
+                alert("Teklif başarıyla gönderildi!");
                 setTeklifTutari("");
+                fetch(`http://localhost:5000/ihale/${id}/teklifler`)
+                    .then(res => res.json())
+                    .then(data => setTeklifler(data));
             } else {
-                alert(" Hata: " + (data.error || data.message));
+                alert("Hata: " + (data.error || data.message));
             }
 
         } catch (error) {
@@ -64,21 +68,39 @@ function IhaleDetay() {
         }
     };
 
+    const teklifGuncelle = async (teklifId) => {
+        try {
+            const response = await fetch(`http://localhost:5000/teklif/${teklifId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    yeni_miktar: parseFloat(guncelTutar),
+                }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                alert("Teklif başarıyla güncellendi!");
+                setDuzenlemeModu(null);
+                setGuncelTutar("");
+                fetch(`http://localhost:5000/ihale/${id}/teklifler`)
+                    .then(res => res.json())
+                    .then(data => setTeklifler(data));
+            } else {
+                alert("Hata: " + (data.error || data.message));
+            }
+        } catch (error) {
+            console.error("Teklif güncelleme hatası:", error);
+            alert("Sunucu hatası oluştu.");
+        }
+    };
+
     useEffect(() => {
         fetch(`http://localhost:5000/ihale/${id}`)
             .then((res) => res.json())
-            .then((data) => {
-                console.log("Backend'den gelen ihale:", data);
-                setIhale(data);
-            })
-            .catch((error) => {
-                console.error("İhale alinamadi:", error);
-            });
+            .then((data) => setIhale(data))
+            .catch((error) => console.error("İhale alınamadı:", error));
     }, [id]);
-
-
-
-
     return (
         <div style={{ padding: "2rem" }}>
             <h2>İhale Detayı</h2>
@@ -89,31 +111,32 @@ function IhaleDetay() {
                     <p><strong>Açıklama:</strong> {ihale.aciklama}</p>
                     <p><strong>Oluşturan ID:</strong> {ihale.olusturan_id}</p>
 
-
-                    {ihale && kullaniciId ? (
-                        ihale.olusturan_id !== kullaniciId ? (
+                    {kullaniciId && ihale.olusturan_id !== kullaniciId ? (
+                        <div style={{ border: "1px solid #ccc", padding: "1rem", marginTop: "2rem", borderRadius: "5px" }}>
+                            <h4>Yeni Teklif Ver</h4>
                             <form onSubmit={handleTeklifGonder}>
-                                <label>Teklif Tutarı:</label><br />
                                 <input
                                     type="number"
                                     value={teklifTutari}
                                     onChange={(e) => setTeklifTutari(e.target.value)}
                                     required
+                                    placeholder="Teklif Tutarı (₺)"
                                 />
                                 <br /><br />
-                                <button type="submit">Teklif Ver</button>
+                                <button style={{
+                                    backgroundColor: "#4CAF50", color: "white",
+                                    border: "none", padding: "6px 12px", cursor: "pointer"
+                                }} type="submit">Teklif Ver</button>
                             </form>
-                        ) : (
-                            <p style={{ color: "red" }}>Bu ihaleyi sen oluşturdun, teklif veremezsin!</p>
-                        )
+                        </div>
                     ) : (
-                        <p>Yükleniyor...</p>
+                        <p style={{ color: "red" }}>Bu ihaleyi sen oluşturdun, teklif veremezsin!</p>
                     )}
-
                 </>
             ) : (
-                <p>Yükleniyor...</p>
+                <p style={{ fontStyle: "italic", color: "#888" }}>İhale verisi yükleniyor...</p>
             )}
+
             <h3>Verilen Teklifler</h3>
             {teklifler.length > 0 ? (
                 <table border="1" cellPadding="10" style={{ marginTop: "1rem", borderCollapse: "collapse" }}>
@@ -130,8 +153,35 @@ function IhaleDetay() {
                             <tr key={index}>
                                 <td>{index + 1}</td>
                                 <td>{teklif.kullanici_id}</td>
-                                <td>{teklif.teklif_miktari}</td>
-                                <td>{new Date(teklif.teklif_tarihi).toLocaleString()}</td>
+                                <td>
+                                    {duzenlemeModu === teklif.id ? (
+                                        <>
+                                            <input
+                                                type="number"
+                                                value={guncelTutar}
+                                                onChange={(e) => setGuncelTutar(e.target.value)}
+                                            />
+                                            <button onClick={() => teklifGuncelle(teklif.id)}>Kaydet</button>
+                                            <button onClick={() => setDuzenlemeModu(null)}>İptal</button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {teklif.miktar} ₺
+                                            {kullaniciId === teklif.kullanici_id && (
+                                                <button
+                                                    style={{ marginLeft: "10px" }}
+                                                    onClick={() => {
+                                                        setDuzenlemeModu(teklif.id);
+                                                        setGuncelTutar(teklif.miktar);
+                                                    }}
+                                                >
+                                                    Düzenle
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </td>
+                                <td>{new Date(teklif.tarih).toLocaleString()}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -139,8 +189,6 @@ function IhaleDetay() {
             ) : (
                 <p>Bu ihaleye henüz teklif verilmemiş.</p>
             )}
-
-
         </div>
     );
 }

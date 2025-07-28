@@ -4,6 +4,7 @@ from functools import wraps
 from flask import Flask, jsonify, request
 from teklif_services import get_teklifler_by_kullanici_id
 from flask_cors import CORS
+from db import connection
 
 
 def token_gerektiriyor(f):
@@ -20,11 +21,11 @@ def token_gerektiriyor(f):
                 "id": data["id"],
                 "rol": data["rol"]
             }
+            request.kullanici = current_user  # 🌟🌟 EKLENEN SATIR
         except Exception as e:
             return jsonify({"error": "Token geçersiz"}), 403
-        return f(current_user, *args, **kwargs)
+        return f(*args, **kwargs)
     return decorator
-
 
 def admin_gerektiriyor(f):
     @wraps(f)
@@ -53,7 +54,8 @@ from db import (
     get_aktif_ihaleler,
     get_suresi_gecmis_ihaleler,
     get_ihaleler_by_kullanici_id,
-    get_teklifler_by_ihale_id
+    get_teklifler_by_ihale_id,
+    update_teklif
 )
 
 SECRET_KEY = 'cok-gizli-anahtarim'
@@ -77,7 +79,6 @@ def get_kullanicilar():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/kullanici', methods=['POST'])
-@token_gerektiriyor
 def yeni_kullanici_ekle():
     veri = request.get_json()
     isim = veri.get("isim")
@@ -367,5 +368,52 @@ def get_teklifler_for_ihale(ihale_id):
     except Exception as e:
            print("Hata (teklif listeleme):",e)
            return jsonify({"error ": str(e)}),500
+    
+@app.route('/teklif/<teklif_id>',methods=['PUT'])
+def teklif_guncelle(teklif_id):
+    try:
+        veri=request.get_json()
+        yeni_miktar=veri.get("yeni_miktar")
+        if not  yeni_miktar:
+            return jsonify({"hata":"Yeni miktar eksik"}),400
+        
+        basarili=update_teklif(teklif_id,yeni_miktar)
+        if basarili:
+            return jsonify({"mesaj":"Teklif güncellendi"})
+        else:
+            return jsonify({"hata":"Teklif güncellenemedi"}),500
+    except Exception as e :
+     return jsonify({"hata":str(e)}),500
+    
+@app.route("/ihale/<ihale_id>/kazanan", methods=["GET"])
+@token_gerektiriyor
+@admin_gerektiriyor
+def kazanan_teklifi_getir(ihale_id):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT kullanici_id, teklif_miktari, teklif_tarihi
+                FROM teklifler
+                WHERE ihale_id = :ihale_id
+                ORDER BY teklif_miktari DESC, teklif_tarihi ASC
+                FETCH FIRST 1 ROWS ONLY
+            """, {"ihale_id": ihale_id})
+
+            result = cursor.fetchone()
+
+            if result:
+                return jsonify({
+                    "kullanici_id": result[0],
+                    "teklif_miktari": result[1],
+                    "teklif_tarihi": result[2]
+                })
+            else:
+                return jsonify({"mesaj": "Bu ihaleye hiç teklif verilmemiş."}), 404
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+
+    
 if __name__ == '__main__':
     app.run(debug=True)
+
+

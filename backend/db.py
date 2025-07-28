@@ -277,7 +277,22 @@ def get_teklifler_by_ihale_id(ihale_id):
               return teklifler
       except Exception as e:
           print ("DB Hata (get_teklifler_by_ihale_id):",e)
-          return [] 
+          return []
+
+def update_teklif(teklif_id,yeni_miktar):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(""" 
+               UPDATE teklifler
+               SET teklif_miktari=:1
+               WHERE id=:2                    
+        """,(yeni_miktar,teklif_id)) 
+            connection.commit()
+            return True
+    except Exception as e:
+        print("Teklif guncelleme hatasi:",e)
+        return False    
+
 
 
 
