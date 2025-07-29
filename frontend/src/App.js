@@ -7,6 +7,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import IhaleDetay from "./components/IhaleDetay";
 import KazananTeklif from "./components/KazananTeklif";
+import AdminIhaleDetay from "./components/AdminIhaleDetay";
+
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
         />
         <Route path="/ihale/:id" element={<IhaleDetay />} />
         <Route path="/admin/ihale/:ihale_id/kazanan" element={<KazananTeklif />} />
+        <Route path="/admin/ihale/:id" element={<AdminIhaleDetay />} />
+
 
       </Routes>
     </Router>

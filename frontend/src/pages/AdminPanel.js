@@ -1,36 +1,54 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 function AdminPanel() {
     const [ihaleler, setIhaleler] = useState([]);
+    const navigate = useNavigate();
+
     useEffect(() => {
         const token = localStorage.getItem("token");
+
         fetch("http://localhost:5000/ihaleler", {
             headers: {
-                "Authorization": 'Bearer ${token}',
-            }
+                Authorization: `Bearer ${token}`,
+            },
         })
-            .then(res => res.json())
-            .then(data => setIhaleler(data))
-            .catch(err => console.error("Hata:", err));
+            .then((res) => res.json())
+            .then((veri) => setIhaleler(veri))
+            .catch((err) => console.error("Hata:", err));
     }, []);
 
     return (
-        <div>
-            <h2>Admin Paneli</h2>
-            <p>Sadece ihaleler yetkisi olan kullanıcı bu sayfayı görebilir</p>
-
-            <h3>İhaleler</h3>
-            <ul>
-                {ihaleler.map((ihale) => (
-                    <li key={ihale.id}>
-                        {ihale.baslik} - {ihale.aciklama}
-                        <Link to={`/admin/ihale/${ihale.id}/kazanan`}>
-                            <button style={{ marginLeft: "10px" }}>Kazananı Göster</button>
-                        </Link>
-                    </li>
-                ))}
-            </ul>
+        <div className="container my-4">
+            {ihaleler.map((ihale) => (
+                <div
+                    key={ihale.id}
+                    className="card mb-4 shadow-sm card-hover-effect"
+                    style={{
+                        padding: "20px",
+                        border: "1px solid #7c0a02",
+                        background: "fff5f7"
+                    }}
+                >
+                    <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 className="card-title text-primary">{ihale.baslik}</h5>
+                            <p className="card-text text-muted">
+                                Bitiş Tarihi:{" "}
+                                {new Date(ihale.bitis_tarihi).toLocaleDateString()}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => navigate(`/admin/ihale/${ihale.id}`)}
+                            className="btn btn-outline-primary"
+                        >
+                            Detaylı Bilgi
+                        </button>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
+
 export default AdminPanel;
