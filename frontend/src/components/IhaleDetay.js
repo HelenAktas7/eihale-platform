@@ -95,12 +95,39 @@ function IhaleDetay() {
         }
     };
 
+    const teklifSil = async (teklifId) => {
+        const onay = window.confirm("Bu teklifi silmek istediğinize emin misiniz?");
+        if (!onay) return;
+
+        const token = localStorage.getItem("token");
+        try {
+            const res = await fetch(`http://localhost:5000/teklif/${teklifId}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                },
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert("Teklif başarıyla silindi!");
+                setTeklifler(teklifler.filter(t => t.id !== teklifId));
+            } else {
+                alert("Hata: " + (data.hata || data.mesaj));
+            }
+        } catch (err) {
+            alert("Sunucu hatası: " + err.message);
+        }
+    };
+
     useEffect(() => {
         fetch(`http://localhost:5000/ihale/${id}`)
             .then((res) => res.json())
             .then((data) => setIhale(data))
             .catch((error) => console.error("İhale alınamadı:", error));
     }, [id]);
+
     return (
         <div style={{ padding: "2rem" }}>
             <h2>İhale Detayı</h2>
@@ -168,15 +195,24 @@ function IhaleDetay() {
                                         <>
                                             {teklif.miktar} ₺
                                             {kullaniciId === teklif.kullanici_id && (
-                                                <button
-                                                    style={{ marginLeft: "10px" }}
-                                                    onClick={() => {
-                                                        setDuzenlemeModu(teklif.id);
-                                                        setGuncelTutar(teklif.miktar);
-                                                    }}
-                                                >
-                                                    Düzenle
-                                                </button>
+                                                <>
+                                                    <button
+                                                        style={{ marginLeft: "10px" }}
+                                                        onClick={() => {
+                                                            setDuzenlemeModu(teklif.id);
+                                                            setGuncelTutar(teklif.miktar);
+                                                        }}
+                                                    >
+                                                        Düzenle
+                                                    </button>
+
+                                                    <button
+                                                        style={{ marginLeft: "5px", color: "red" }}
+                                                        onClick={() => teklifSil(teklif.id)}
+                                                    >
+                                                        Sil
+                                                    </button>
+                                                </>
                                             )}
                                         </>
                                     )}

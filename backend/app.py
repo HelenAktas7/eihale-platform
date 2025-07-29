@@ -411,9 +411,35 @@ def kazanan_teklifi_getir(ihale_id):
                 return jsonify({"mesaj": "Bu ihaleye hiç teklif verilmemiş."}), 404
     except Exception as e:
         return jsonify({"hata": str(e)}), 500
+    
+@app.route("/teklif/<teklif_id>",methods=["DELETE"])
+@token_gerektiriyor
+def teklif_sil(teklif_id):
+     try:
+        with connection.cursor() as cursor :
+         cursor.execute("""
+         SELECT kullanici_id FROM teklifler WHERE id = : id
+     """,{"id":teklif_id})
+         result = cursor.fetchone()
+         if not result:
+             return jsonify({"hata":"Teklif Bulunamadı"}),404
+         
+         teklif_sahibi=result[0]
+        if teklif_sahibi != request.kullanici["id"]:
+          return jsonify({"hata":"Bu teklifi silme yetkiniz yok"}),403
+        
+        cursor.execute("""" 
+                       DELETE FROM teklifler WHERE id= :id
+                       """,{"id":teklif_id})
+        connection.commit()
+        return jsonify({"mesaj":"Teklif başarıyla silindi"}),200
+     except Exception  as e :
+         return jsonify({"hata":str(e)}),500
+
+
 
     
 if __name__ == '__main__':
-    app.run(debug=True)
+          app.run(debug=True)
 
 
