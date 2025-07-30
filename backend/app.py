@@ -5,27 +5,28 @@ from flask import Flask, jsonify, request
 from teklif_services import get_teklifler_by_kullanici_id
 from flask_cors import CORS
 from db import connection
+from datetime import datetime
 
 
 def token_gerektiriyor(f):
     @wraps(f)
-    def decorator(*args, **kwargs):
+    def decorated(*args, **kwargs):
         token = None
-        if "Authorization" in request.headers:
-            token = request.headers["Authorization"].split(" ")[1]
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[1]
+
         if not token:
-            return jsonify({"error": "Token bulunamadi"}), 401
+            return jsonify({"message": "Token eksik"}), 403
+
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            current_user = {
-                "id": data["id"],
-                "rol": data["rol"]
-            }
-            request.kullanici = current_user  # 🌟🌟 EKLENEN SATIR
+            decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            request.kullanici = decoded_token
         except Exception as e:
-            return jsonify({"error": "Token geçersiz"}), 403
+            return jsonify({"message": "Token doğrulama başarısız", "hata": str(e)}), 403
+
         return f(*args, **kwargs)
-    return decorator
+    return decorated
+
 
 def admin_gerektiriyor(f):
     @wraps(f)
@@ -385,6 +386,7 @@ def teklif_guncelle(teklif_id):
     except Exception as e :
      return jsonify({"hata":str(e)}),500
     
+
 @app.route("/ihale/<ihale_id>/kazanan", methods=["GET"])
 @token_gerektiriyor
 @admin_gerektiriyor
@@ -402,10 +404,19 @@ def kazanan_teklifi_getir(ihale_id):
             result = cursor.fetchone()
 
             if result:
+                teklif_tarihi = result[2]
+
+                if teklif_tarihi is None:
+                    tarih_str = ""
+                elif isinstance(teklif_tarihi, datetime):
+                    tarih_str = teklif_tarihi.strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    tarih_str = str(teklif_tarihi)
+
                 return jsonify({
                     "kullanici_id": result[0],
                     "teklif_miktari": result[1],
-                    "teklif_tarihi": result[2]
+                    "teklif_tarihi": tarih_str
                 })
             else:
                 return jsonify({"mesaj": "Bu ihaleye hiç teklif verilmemiş."}), 404
