@@ -1,11 +1,10 @@
 import jwt
-import datetime
 from functools import wraps
 from flask import Flask, jsonify, request
 from teklif_services import get_teklifler_by_kullanici_id
 from flask_cors import CORS
 from db import connection
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def token_gerektiriyor(f):
@@ -220,7 +219,7 @@ def kullanici_giris():
                 "id": user_id,
                 "isim": isim,
                 "rol": rol,
-                "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+                "exp": datetime.now() + timedelta(hours=2)  
             }, SECRET_KEY, algorithm="HS256")
 
             return jsonify({"token": token})
@@ -446,10 +445,7 @@ def teklif_sil(teklif_id):
         return jsonify({"mesaj":"Teklif başarıyla silindi"}),200
      except Exception  as e :
          return jsonify({"hata":str(e)}),500
-
-
-
-    
+   
 if __name__ == '__main__':
           app.run(debug=True)
 
