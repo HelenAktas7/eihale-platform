@@ -422,30 +422,64 @@ def kazanan_teklifi_getir(ihale_id):
     except Exception as e:
         return jsonify({"hata": str(e)}), 500
     
-@app.route("/teklif/<teklif_id>",methods=["DELETE"])
+
+@app.route("/admin/ihale/<ihale_id>",methods=["DELETE"])
 @token_gerektiriyor
-def teklif_sil(teklif_id):
-     try:
-        with connection.cursor() as cursor :
-         cursor.execute("""
-         SELECT kullanici_id FROM teklifler WHERE id = : id
-     """,{"id":teklif_id})
-         result = cursor.fetchone()
-         if not result:
-             return jsonify({"hata":"Teklif Bulunamadı"}),404
-         
-         teklif_sahibi=result[0]
-        if teklif_sahibi != request.kullanici["id"]:
-          return jsonify({"hata":"Bu teklifi silme yetkiniz yok"}),403
-        
-        cursor.execute("""" 
-                       DELETE FROM teklifler WHERE id= :id
-                       """,{"id":teklif_id})
+@admin_gerektiriyor
+def ihale_sil(ihale_id):
+  try:
+      with connection.cursor() as cursor:
+          cursor.execute("DELETE FROM teklifler WHERE ihale_id=:id",{"id":ihale_id})
+          cursor.execute("DELETE FROM ihaleler WHERE id=:id",{"id":ihale_id})
+          connection.commit()
+          return jsonify({"mesaj":"İhale silindi."}),200
+  except Exception as e:
+      return jsonify({"hata":str(e)}),500
+  
+@app.route("/admin/kullanici/<kullanici_id>", methods=["DELETE"])
+@token_gerektiriyor
+@admin_gerektiriyor
+def kullanici_sil(kullanici_id):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM teklifler WHERE kullanici_id = :id", {"id": kullanici_id})
+            cursor.execute("DELETE FROM ihaleler WHERE olusturan_id = :id", {"id": kullanici_id})
+            cursor.execute("DELETE FROM kullanicilar WHERE id = :id", {"id": kullanici_id})
         connection.commit()
-        return jsonify({"mesaj":"Teklif başarıyla silindi"}),200
-     except Exception  as e :
-         return jsonify({"hata":str(e)}),500
-   
+        return jsonify({"mesaj": "Kullanıcı silindi."}), 200
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+    
+@app.route("/admin/kullanici/<kullanici_id>/teklifler",methods=["GET"])
+@token_gerektiriyor
+@admin_gerektiriyor
+def get_user_teklifler(kullanici_id):
+   try:
+       print(" İstenen kullanıcı ID:", kullanici_id)
+       with connection.cursor() as cursor:
+           cursor.execute("""
+                          SELECT t.id,t.teklif_miktari,t.teklif_tarihi,i.baslik
+                          FROM teklifler t
+                          JOIN ihaleler i ON t.ihale_id = i.id
+                          WHERE t.kullanici_id = :id
+                          ORDER BY t.teklif_tarihi DESC 
+""" ,{"id": kullanici_id})
+           rows=cursor.fetchall()
+           
+           print(" Çekilen teklifler:", rows)
+           return jsonify([
+               {"id":row[0],
+               "teklif_miktari":row[1],
+               "teklif_tarihi":row[2],
+               "ihale_baslik":row[3]
+               }for row in rows
+           ])
+   except Exception as e :
+     print("Hata olustu",str(e))
+     return jsonify({"hata":str(e)}),500
+          
+
+ 
 if __name__ == '__main__':
           app.run(debug=True)
 
