@@ -5,6 +5,49 @@ function AdminPanel() {
     const [ihaleler, setIhaleler] = useState([]);
     const [kullanicilar, setKullanicilar] = useState([]);
     const navigate = useNavigate();
+    const handleIhaleSil = async (ihaleId) => {
+        const confirmDelete = window.confirm("Bu ihaleyi silmek istiyor musunuz?");
+        if (!confirmDelete) return;
+
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`http://localhost:5000/admin/ihale/${ihaleId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            alert(data.mesaj || data.hata);
+            if (response.ok) {
+            }
+        } catch (error) {
+            console.error("Silme hatası:", error);
+        }
+    };
+    const handleKullaniciSil = async (kullaniciId) => {
+        const confirmDelete = window.confirm("Bu kullanıcıyı silmek istiyor musunuz?");
+        if (!confirmDelete) return;
+
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`http://localhost:5000/admin/kullanici/${kullaniciId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            alert(data.mesaj || data.hata);
+            if (response.ok) {
+            }
+        } catch (error) {
+            console.error("Silme hatası:", error);
+        }
+    };
+
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -52,13 +95,24 @@ function AdminPanel() {
                             <div className="card-body">
                                 <h5 className="card-title text-primary">{ihale.baslik}</h5>
                                 <p className="card-text">Bitiş Tarihi: {ihale.bitis_tarihi}</p>
-                                <button
-                                    className="btn btn-outline-primary"
-                                    onClick={() => navigate(`/admin/ihale/${ihale.id}`)}
-                                >
-                                    Detaylı Bilgi
-                                </button>
+
+                                <div className="d-flex gap-2">
+                                    <button
+                                        className="btn btn-outline-primary"
+                                        onClick={() => navigate(`/admin/ihale/${ihale.id}`)}
+                                    >
+                                        Detaylı Bilgi
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleIhaleSil(ihale.id)}
+                                        className="btn btn-danger"
+                                    >
+                                        Sil
+                                    </button>
+                                </div>
                             </div>
+
                         </div>
                     ))}
                 </div>
@@ -85,6 +139,21 @@ function AdminPanel() {
                             <div className="card-body">
                                 <h5 className="card-title text-success fw-bold">{kullanici.isim}</h5>
                                 <p className="card-text text-muted">{kullanici.email}</p>
+                                <div className="d-flex gap-2">
+                                    <button
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => navigate(`/admin/kullanici/${kullanici.id}/teklifler`)}
+                                    >
+                                        Tekliflerini Gör
+                                    </button>
+
+                                    <button
+                                        className="btn btn-danger"
+                                        onClick={() => handleKullaniciSil(kullanici.id)}
+                                    >
+                                        Sil
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
