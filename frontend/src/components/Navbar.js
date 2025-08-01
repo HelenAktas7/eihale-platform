@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 
-function Navbar() {
+function Navbar({ aramaMetni, setAramaMetni }) {
     let rol = null;
     const token = localStorage.getItem("token");
     if (token) {
@@ -15,28 +15,28 @@ function Navbar() {
     }
 
     return (
-        <nav style={{ padding: "1rem", borderBottom: "1px solid #ccc", background: "#f9f9f9" }}>
-            <Link to="/">🏠 Ana Sayfa</Link>{" "}
-            {rol === "admin" && (
-                <>
-                    | <Link to="/admin">⚙️ Admin Paneli</Link>
-                </>
-            )}
-            {rol === "kullanici" && (
-                <>
-                    | <Link to="/kullanici">👤 Kullanici Paneli</Link>
-                </>
-            )}
-            {rol && (
-                <>
-                    |{" "}
+        <nav
+            style={{
+                padding: "1rem",
+                borderBottom: "1px solid #ccc",
+                background: "#f9f9f9",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+            }}
+        >
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <Link to="/">🏠 Ana Sayfa</Link>
+                {rol === "admin" && <Link to="/admin">⚙️ Admin Paneli</Link>}
+                {rol === "kullanici" && <Link to="/kullanici">👤 Kullanıcı Paneli</Link>}
+                {rol && (
                     <button
                         onClick={() => {
                             localStorage.removeItem("token");
                             window.location.href = "/giris";
                         }}
                         style={{
-                            marginLeft: "1rem",
                             background: "#e74c3c",
                             color: "white",
                             border: "none",
@@ -45,9 +45,24 @@ function Navbar() {
                             cursor: "pointer",
                         }}
                     >
-                        Cikis Yap
+                        Çıkış Yap
                     </button>
-                </>
+                )}
+            </div>
+
+            {rol === "admin" && (
+                <input
+                    type="text"
+                    value={aramaMetni}
+                    onChange={(e) => setAramaMetni(e.target.value)}
+                    placeholder="Başlığa göre ara..."
+                    style={{
+                        padding: "0.4rem",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        minWidth: "250px"
+                    }}
+                />
             )}
         </nav>
     );
