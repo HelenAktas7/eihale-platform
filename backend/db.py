@@ -107,7 +107,7 @@ def get_all_kullanicilar():
 def get_all_ihaleler():
     try:
         cursor = connection.cursor()
-        query = "SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id FROM ihaleler"
+        query = "SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id, aktif FROM ihaleler"
         cursor.execute(query)
         return cursor.fetchall()
     except Exception as e:
@@ -257,31 +257,33 @@ def get_suresi_gecmis_ihaleler():
         return []
     
 def get_teklifler_by_ihale_id(ihale_id):
-      try:
-         with connection.cursor() as cursor:
-          cursor.execute(""" 
-          SELECT t.id,
-          t.kullanici_id,
-          t.teklif_miktari,
-          TO_CHAR(t.teklif_tarihi,'YYYY-MM-DD HH24:MI:SS')
-          FROM teklifler t 
-          WHERE t.ihale_id =:ihale_id 
-          ORDER BY t.teklif_miktari DESC 
-          """ ,{"ihale_id":ihale_id})
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(""" 
+                SELECT t.id,
+                       t.kullanici_id,
+                       t.teklif_miktari,
+                       TO_CHAR(t.teklif_tarihi, 'YYYY-MM-DD HH24:MI:SS')
+                FROM teklifler t 
+                WHERE t.ihale_id = :ihale_id 
+                ORDER BY t.teklif_miktari DESC
+            """, {"ihale_id": ihale_id})
 
-          rows=cursor.fetchall() 
-          teklifler = []
-         for row in rows:
+            rows = cursor.fetchall()
+
+            teklifler = []
+            for row in rows:
                 teklifler.append({
                     "id": row[0],
                     "kullanici_id": row[1],
                     "teklif_miktari": row[2],
                     "teklif_tarihi": row[3]
-              })
-                return teklifler
-      except Exception as e:
-          print ("DB Hata (get_teklifler_by_ihale_id):",e)
-          return []
+                })
+
+            return teklifler
+    except Exception as e:
+        print("DB Hata (get_teklifler_by_ihale_id):", e)
+        return []
 
 def update_teklif(teklif_id,yeni_miktar):
     try:
