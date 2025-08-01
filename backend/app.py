@@ -162,7 +162,8 @@ def tum_ihaleleri_getir():
                 "aciklama": i[2],
                 "baslangic_tarihi": str(i[3]),
                 "bitis_tarihi": str(i[4]),
-                "olusturan_id": i[5]
+                "olusturan_id": i[5],
+                "aktif":i[6]
             }
             for i in ihaleler
         ])
@@ -477,6 +478,122 @@ def get_user_teklifler(kullanici_id):
    except Exception as e :
      print("Hata olustu",str(e))
      return jsonify({"hata":str(e)}),500
+   
+@app.route("/admin/ihale/<ihale_id>/kazanan", methods=["PUT"])
+@token_gerektiriyor
+@admin_gerektiriyor
+def kazanan_teklifi_belirle(ihale_id):
+    veri = request.get_json()
+    kazanan_teklif_id = veri.get("teklif_id")
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id FROM teklifler 
+                WHERE id = :teklif_id AND ihale_id = :ihale_id
+            """, {"teklif_id": kazanan_teklif_id, "ihale_id": ihale_id})
+
+            if cursor.fetchone() is None:
+                return jsonify({"hata": "Teklif bu ihaleye ait değil"}), 400
+
+            cursor.execute("""
+                UPDATE ihaleler
+                SET kazanan_teklif_id = :teklif_id
+                WHERE id = :ihale_id
+            """, {"teklif_id": kazanan_teklif_id, "ihale_id": ihale_id})
+            connection.commit()
+        return jsonify({"mesaj": "Kazanan teklif başarıyla belirlendi"})
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+
+@app.route('/admin/ihale/<ihale_id>', methods=["GET"])
+@token_gerektiriyor
+@admin_gerektiriyor
+def get_ihale_detay_admin(ihale_id):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    i.id,
+                    i.baslik,
+                    i.aciklama,
+                    i.bitis_tarihi,
+                    i.kazanan_teklif_id,
+                    t.kullanici_id,
+                    t.teklif_miktari,
+                    TO_CHAR(t.teklif_tarihi, 'YYYY-MM-DD HH24:MI:SS')
+                FROM ihaleler i
+                LEFT JOIN teklifler t ON i.kazanan_teklif_id = t.id
+                WHERE i.id = :id
+            """, {"id": ihale_id})
+
+            result = cursor.fetchone()
+
+            if result:
+                return {
+                    "ihale_id": result[0],
+                    "baslik": result[1],
+                    "aciklama": result[2],
+                    "bitis_tarihi": result[3],
+                    "kazanan_teklif": {
+                        "id": result[4],
+                        "kullanici_id": result[5],
+                        "teklif_miktari": result[6],
+                        "teklif_tarihi": result[7],
+                    } if result[4] else None
+                }
+            else:
+                return {"mesaj": "İhale bulunamadı."}, 404
+    except Exception as e:
+        print("İhale detay hatası:", e)
+        return jsonify({"hata": str(e)}), 500
+
+@app.route("/admin/ihale/<ihale_id>", methods=["PUT"])
+@token_gerektiriyor
+@admin_gerektiriyor
+def ihale_guncelle(ihale_id):
+    data = request.json
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE ihaleler
+                SET baslik = :baslik,
+                    aciklama = :aciklama,
+                    baslangic_tarihi = TO_DATE(:baslangic, 'YYYY-MM-DD'),
+                    bitis_tarihi = TO_DATE(:bitis, 'YYYY-MM-DD')
+                WHERE id = :id
+            """, {
+                "baslik": data["baslik"],
+                "aciklama": data["aciklama"],
+                "baslangic": data["baslangic_tarihi"],
+                "bitis": data["bitis_tarihi"],
+                "id": ihale_id
+            })
+            connection.commit()
+        return jsonify({"mesaj": "İhale başarıyla güncellendi"})
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+    
+@app.route("/kullanici/ihale/<ihale_id>/durum", methods=["PUT"])
+@token_gerektiriyor
+def ihale_durum_guncelle(ihale_id):
+    data = request.json
+    try:
+        aktif_mi = int(data.get("aktif"))
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE ihaleler
+                SET aktif = :aktif
+                WHERE id = :id
+            """, {"aktif": aktif_mi, "id": ihale_id})
+            connection.commit()
+        return jsonify({"mesaj": "Durum güncellendi"})
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+    
+
+
+
           
 
  
