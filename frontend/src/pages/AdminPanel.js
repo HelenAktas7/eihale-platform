@@ -1,10 +1,13 @@
-// AdminPanel.js (Full, Düzenlenmiş ve Güvenli Hali)
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
+
 
 function AdminPanel() {
     const [ihaleler, setIhaleler] = useState([]);
     const [kullanicilar, setKullanicilar] = useState([]);
+    const [aramaMetni, setAramaMetni] = useState("");
+
     const navigate = useNavigate();
     const fetchIhaleler = () => {
         const token = localStorage.getItem("token");
@@ -116,71 +119,73 @@ function AdminPanel() {
             });
     }, []);
     return (
-        <div className="container mt-4">
-            <div className="row">
-                <div className="col-md-6">
-                    <h3>İhaleler</h3>
-                    {ihaleler.map((ihale) => (
-                        <div key={ihale.id} className="card mb-3 border-danger shadow-sm">
-                            <div className="card-body">
-                                <h5 className="card-title text-primary">{ihale.baslik}</h5>
-                                <p className="card-text">Bitiş Tarihi: {ihale.bitis_tarihi}</p>
-                                <p>
-                                    Durum: <span className={`badge ${ihale.aktif ? "bg-success" : "bg-secondary"}`}>
-                                        {ihale.aktif ? "Aktif" : "Pasif"}
-                                    </span>
-                                </p>
-                                <div className="d-flex gap-2">
-                                    <button
-                                        className="btn btn-outline-primary"
-                                        onClick={() => navigate(`/admin/ihale/${ihale.id}`)}>
-                                        Detaylı Bilgi
-                                    </button>
-                                    <button
-                                        className="btn btn-danger"
-                                        onClick={() => handleIhaleSil(ihale.id)}>
-                                        Sil
-                                    </button>
-                                    {Number(ihale.aktif) === 1 ? (
-                                        <button className="btn btn-warning btn-sm" onClick={() => durumDegistir(ihale.id, false)}>
-                                            Pasifleştir
+        <>
+            <div className="container mt-4">
+                <div className="row">
+                    <div className="col-md-6">
+                        <h3>İhaleler</h3>
+                        {ihaleler.map((ihale) => (
+                            <div key={ihale.id} className="card mb-3 border-danger shadow-sm">
+                                <div className="card-body">
+                                    <h5 className="card-title text-primary">{ihale.baslik}</h5>
+                                    <p className="card-text">Bitiş Tarihi: {ihale.bitis_tarihi}</p>
+                                    <p>
+                                        Durum: <span className={`badge ${ihale.aktif ? "bg-success" : "bg-secondary"}`}>
+                                            {ihale.aktif ? "Aktif" : "Pasif"}
+                                        </span>
+                                    </p>
+                                    <div className="d-flex gap-2">
+                                        <button
+                                            className="btn btn-outline-primary"
+                                            onClick={() => navigate(`/admin/ihale/${ihale.id}`)}>
+                                            Detaylı Bilgi
                                         </button>
-                                    ) : (
-                                        <button className="btn btn-success btn-sm" onClick={() => durumDegistir(ihale.id, true)}>
-                                            Aktif Et
+                                        <button
+                                            className="btn btn-danger"
+                                            onClick={() => handleIhaleSil(ihale.id)}>
+                                            Sil
                                         </button>
-                                    )}
+                                        {Number(ihale.aktif) === 1 ? (
+                                            <button className="btn btn-warning btn-sm" onClick={() => durumDegistir(ihale.id, false)}>
+                                                Pasifleştir
+                                            </button>
+                                        ) : (
+                                            <button className="btn btn-success btn-sm" onClick={() => durumDegistir(ihale.id, true)}>
+                                                Aktif Et
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
 
-                <div className="col-md-6">
-                    <h3>Kullanıcılar</h3>
-                    {kullanicilar.map((kullanici) => (
-                        <div key={kullanici.id} className="card mb-3 border-success shadow-sm">
-                            <div className="card-body">
-                                <h5 className="card-title text-success fw-bold">{kullanici.isim}</h5>
-                                <p className="card-text text-muted">{kullanici.email}</p>
-                                <div className="d-flex gap-2">
-                                    <button
-                                        className="btn btn-outline-secondary"
-                                        onClick={() => navigate(`/admin/kullanici/${kullanici.id}/teklifler`)}>
-                                        Tekliflerini Gör
-                                    </button>
-                                    <button
-                                        className="btn btn-danger"
-                                        onClick={() => handleKullaniciSil(kullanici.id)}>
-                                        Sil
-                                    </button>
+                    <div className="col-md-6">
+                        <h3>Kullanıcılar</h3>
+                        {kullanicilar.map((kullanici) => (
+                            <div key={kullanici.id} className="card mb-3 border-success shadow-sm">
+                                <div className="card-body">
+                                    <h5 className="card-title text-success fw-bold">{kullanici.isim}</h5>
+                                    <p className="card-text text-muted">{kullanici.email}</p>
+                                    <div className="d-flex gap-2">
+                                        <button
+                                            className="btn btn-outline-secondary"
+                                            onClick={() => navigate(`/admin/kullanici/${kullanici.id}/teklifler`)}>
+                                            Tekliflerini Gör
+                                        </button>
+                                        <button
+                                            className="btn btn-danger"
+                                            onClick={() => handleKullaniciSil(kullanici.id)}>
+                                            Sil
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
 
