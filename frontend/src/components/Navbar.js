@@ -53,9 +53,9 @@ function Navbar({ aramaMetni, setAramaMetni }) {
             {rol === "admin" && (
                 <input
                     type="text"
+                    placeholder="Başlığa göre ara..."
                     value={aramaMetni}
                     onChange={(e) => setAramaMetni(e.target.value)}
-                    placeholder="Başlığa göre ara..."
                     style={{
                         padding: "0.4rem",
                         border: "1px solid #ccc",
