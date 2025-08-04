@@ -9,23 +9,28 @@ import IhaleDetay from "./components/IhaleDetay";
 import KazananTeklif from "./components/KazananTeklif";
 import AdminIhaleDetay from "./components/AdminIhaleDetay";
 import AdminKullaniciTeklifler from "./components/AdminKullaniciTeklifler";
-
+import { useState } from "react";
 
 function App() {
+  const [aramaMetni, setAramaMetni] = useState("");
+
   return (
     <Router>
-      <Navbar />
+      <Navbar aramaMetni={aramaMetni} setAramaMetni={setAramaMetni} />
+
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/giris" element={<Login />} />
+
         <Route
           path="/admin"
           element={
             <ProtectedRoute>
-              <AdminPanel />
+              <AdminPanel aramaMetni={aramaMetni} setAramaMetni={setAramaMetni} />
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/kullanici"
           element={
@@ -34,6 +39,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route path="/ihale/:id" element={<IhaleDetay />} />
         <Route path="/admin/ihale/:ihale_id/kazanan" element={<KazananTeklif />} />
         <Route path="/admin/ihale/:id" element={<AdminIhaleDetay />} />
