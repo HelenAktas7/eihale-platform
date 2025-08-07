@@ -107,7 +107,7 @@ def get_all_kullanicilar():
 def get_all_ihaleler():
     try:
         cursor = connection.cursor()
-        query = "SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id, aktif FROM ihaleler"
+        query = "SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id, aktif ,km,yil,vites FROM ihaleler"
         cursor.execute(query)
         return cursor.fetchall()
     except Exception as e:

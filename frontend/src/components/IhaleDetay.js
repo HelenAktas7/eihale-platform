@@ -10,9 +10,6 @@ function IhaleDetay() {
     const [teklifler, setTeklifler] = useState([]);
     const [kazanan, setKazanan] = useState(null);
 
-    const [duzenlemeModu, setDuzenlemeModu] = useState(null);
-    const [guncelTutar, setGuncelTutar] = useState("");
-
     useEffect(() => {
         fetch(`http://localhost:5000/ihale/${id}/teklifler`)
             .then(res => res.json())
@@ -32,6 +29,13 @@ function IhaleDetay() {
             }
         }
     }, []);
+
+    useEffect(() => {
+        fetch(`http://localhost:5000/ihale/${id}`)
+            .then((res) => res.json())
+            .then((data) => setIhale(data))
+            .catch((error) => console.error("İhale alınamadı:", error));
+    }, [id]);
 
     const handleTeklifGonder = async (e) => {
         e.preventDefault();
@@ -68,162 +72,84 @@ function IhaleDetay() {
         }
     };
 
-    const teklifGuncelle = async (teklifId) => {
-        try {
-            const response = await fetch(`http://localhost:5000/teklif/${teklifId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    yeni_miktar: parseFloat(guncelTutar),
-                }),
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                alert("Teklif başarıyla güncellendi!");
-                setDuzenlemeModu(null);
-                setGuncelTutar("");
-                fetch(`http://localhost:5000/ihale/${id}/teklifler`)
-                    .then(res => res.json())
-                    .then(data => setTeklifler(data));
-            } else {
-                alert("Hata: " + (data.error || data.message));
-            }
-        } catch (error) {
-            console.error("Teklif güncelleme hatası:", error);
-            alert("Sunucu hatası oluştu.");
-        }
-    };
-
-    const teklifSil = async (teklifId) => {
-        const onay = window.confirm("Bu teklifi silmek istediğinize emin misiniz?");
-        if (!onay) return;
-
-        const token = localStorage.getItem("token");
-        try {
-            const res = await fetch(`http://localhost:5000/teklif/${teklifId}`, {
-                method: "DELETE",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                },
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                alert("Teklif başarıyla silindi!");
-                setTeklifler(teklifler.filter(t => t.id !== teklifId));
-            } else {
-                alert("Hata: " + (data.hata || data.mesaj));
-            }
-        } catch (err) {
-            alert("Sunucu hatası: " + err.message);
-        }
-    };
-
-    useEffect(() => {
-        fetch(`http://localhost:5000/ihale/${id}`)
-            .then((res) => res.json())
-            .then((data) => setIhale(data))
-            .catch((error) => console.error("İhale alınamadı:", error));
-    }, [id]);
-
     return (
-        <div style={{ padding: "2rem" }}>
-            <h2>İhale Detayı</h2>
-
+        <div className="container py-4">
             {ihale ? (
                 <>
-                    <p><strong>Başlık:</strong> {ihale.baslik}</p>
-                    <p><strong>Açıklama:</strong> {ihale.aciklama}</p>
-                    <p><strong>Oluşturan ID:</strong> {ihale.olusturan_id}</p>
 
-                    {kullaniciId && ihale.olusturan_id !== kullaniciId ? (
-                        <div style={{ border: "1px solid #ccc", padding: "1rem", marginTop: "2rem", borderRadius: "5px" }}>
-                            <h4>Yeni Teklif Ver</h4>
-                            <form onSubmit={handleTeklifGonder}>
-                                <input
-                                    type="number"
-                                    value={teklifTutari}
-                                    onChange={(e) => setTeklifTutari(e.target.value)}
-                                    required
-                                    placeholder="Teklif Tutarı (₺)"
-                                />
-                                <br /><br />
-                                <button style={{
-                                    backgroundColor: "#4CAF50", color: "white",
-                                    border: "none", padding: "6px 12px", cursor: "pointer"
-                                }} type="submit">Teklif Ver</button>
-                            </form>
+                    <div className="card shadow-sm mb-4">
+                        <div className="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 className="card-title mb-2" style={{ fontWeight: "bold" }}>
+                                    {ihale.baslik}
+                                </h5>
+                                <p className="card-subtitle text-muted mb-0">
+                                    <i className="bi bi-geo-alt-fill me-2"></i>
+                                    {ihale.konum || "Konum bilgisi yok"}
+                                </p>
+                            </div>
+
+                            <div>
+                                <span className="text-muted">İhale No: </span>
+                                <span className="fw-bold text-primary">{ihale.id}</span>
+                            </div>
                         </div>
-                    ) : (
-                        <p style={{ color: "red" }}>Bu ihaleyi sen oluşturdun, teklif veremezsin!</p>
-                    )}
+                    </div>
+                    <div className="row">
+
+                        <div className="col-md-8">
+                            <img
+                                src={ihale.resimURL || "/placeholder.jpg"}
+                                alt={ihale.baslik}
+                                className="img-fluid rounded mb-3"
+                            />
+
+                            {kullaniciId && ihale.olusturan_id !== kullaniciId ? (
+                                <div className="card p-3 mb-4">
+                                    <h5>Yeni Teklif Ver</h5>
+                                    <form onSubmit={handleTeklifGonder} className="d-flex gap-2">
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            placeholder="Teklif Tutarı (₺)"
+                                            value={teklifTutari}
+                                            onChange={(e) => setTeklifTutari(e.target.value)}
+                                            required
+                                        />
+                                        <button type="submit" className="btn btn-primary">Teklif Ver</button>
+                                    </form>
+                                </div>
+                            ) : (
+                                <p className="text-danger">Bu ihaleyi sen oluşturdun, teklif veremezsin!</p>
+                            )}
+                        </div>
+
+
+                        <div className="col-md-4">
+                            <div className="card p-3">
+                                <h5 className="text-center">TEKLİF DURUMU</h5>
+                                <h4 className="text-center text-primary mb-3">
+                                    Güncel Fiyat: ₺{teklifler?.[0]?.miktar ? Number(teklifler[0].miktar).toLocaleString("tr-TR") : "0"}
+                                </h4>
+
+                                <ul className="list-group mb-3">
+                                    {teklifler.map((t, i) => (
+                                        <li className="list-group-item d-flex justify-content-between" key={i}>
+                                            <span>{t.kullanici_id.slice(0, 8).toUpperCase()}</span>
+                                            <span>₺{Number(t.miktar).toLocaleString("tr-TR")}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <div className="bg-dark text-white text-center py-2 rounded">
+                                    <strong>0</strong> Saat <strong>0</strong> Dakika <strong>0</strong> Saniye
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </>
             ) : (
-                <p style={{ fontStyle: "italic", color: "#888" }}>İhale verisi yükleniyor...</p>
-            )}
-
-            <h3>Verilen Teklifler</h3>
-            {teklifler.length > 0 ? (
-                <table border="1" cellPadding="10" style={{ marginTop: "1rem", borderCollapse: "collapse" }}>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Kullanıcı ID</th>
-                            <th>Teklif Tutarı (₺)</th>
-                            <th>Teklif Tarihi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {teklifler.map((teklif, index) => (
-                            <tr key={index}>
-                                <td>{index + 1}</td>
-                                <td>{teklif.kullanici_id}</td>
-                                <td>
-                                    {duzenlemeModu === teklif.id ? (
-                                        <>
-                                            <input
-                                                type="number"
-                                                value={guncelTutar}
-                                                onChange={(e) => setGuncelTutar(e.target.value)}
-                                            />
-                                            <button onClick={() => teklifGuncelle(teklif.id)}>Kaydet</button>
-                                            <button onClick={() => setDuzenlemeModu(null)}>İptal</button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            {teklif.miktar} ₺
-                                            {kullaniciId === teklif.kullanici_id && (
-                                                <>
-                                                    <button
-                                                        style={{ marginLeft: "10px" }}
-                                                        onClick={() => {
-                                                            setDuzenlemeModu(teklif.id);
-                                                            setGuncelTutar(teklif.miktar);
-                                                        }}
-                                                    >
-                                                        Düzenle
-                                                    </button>
-
-                                                    <button
-                                                        style={{ marginLeft: "5px", color: "red" }}
-                                                        onClick={() => teklifSil(teklif.id)}
-                                                    >
-                                                        Sil
-                                                    </button>
-                                                </>
-                                            )}
-                                        </>
-                                    )}
-                                </td>
-                                <td>{new Date(teklif.tarih).toLocaleString()}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            ) : (
-                <p>Bu ihaleye henüz teklif verilmemiş.</p>
+                <p>İhale verisi yükleniyor...</p>
             )}
         </div>
     );

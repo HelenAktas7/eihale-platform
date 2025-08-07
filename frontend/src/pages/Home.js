@@ -14,8 +14,6 @@ function Home() {
     const [minFiyat, setMinFiyat] = useState("");
     const [maxFiyat, setMaxFiyat] = useState("");
     const [sirala, setSirala] = useState("tarih");
-
-
     useEffect(() => {
         const token = localStorage.getItem("token");
         fetch("http://localhost:5000/ihaleler", {
@@ -24,12 +22,10 @@ function Home() {
             }
         })
             .then(res => res.json())
-            .then(data => {
-                const aktifIhaleler = data.filter(i => i.aktif === 1);
-                setIhaleler(aktifIhaleler);
-            })
+            .then((data) => setIhaleler(data))
             .catch(err => console.error("İhaleler çekilemedi:", err));
     }, []);
+
 
     return (
         <>
@@ -102,9 +98,19 @@ function Home() {
                         background: "#fff",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                         borderRadius: "8px",
-                        overflow: "hidden"
-
-                    }}>
+                        overflow: "hidden",
+                        cursor: "pointer",
+                        transition: "transform 0.3s ease, box-shadow 0.3s ease"
+                    }}
+                        onClick={() => navigate(`/ihale/${ihale.id}`)}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "scale(1.03)";
+                            e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.2)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "scale(1)";
+                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+                        }}>
 
                         <img src={ihale.resimURL} alt={ihale.baslik} style={{ width: "100%", height: "200px", objectFit: "cover" }} />
 
@@ -119,6 +125,9 @@ function Home() {
                             <p><strong>Başlangıç Bedeli:</strong> ₺{ihale.baslangic_bedeli}</p>
                             <p>{ihale.teklifVarMi ? "Teklif Mevcut" : "Teklif Mevcut Değil"}</p>
                             <p>🗓 {new Date(ihale.bitis_tarihi).toLocaleString()}</p>
+                            <p><strong>Yıl:</strong> {ihale.yil}</p>
+                            <p><strong>Km:</strong> {ihale.km} km</p>
+                            <p><strong>Vites:</strong> {ihale.vites}</p>
 
                             <button
                                 onClick={() => navigate(`/ihale/${ihale.id}`)}
@@ -149,6 +158,7 @@ const kapsayiciKart = {
     boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
     margin: "2rem auto",
     maxWidth: "90%"
+
 };
 
 const inputGrup = {
