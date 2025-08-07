@@ -163,7 +163,10 @@ def tum_ihaleleri_getir():
                 "baslangic_tarihi": str(i[3]),
                 "bitis_tarihi": str(i[4]),
                 "olusturan_id": i[5],
-                "aktif":i[6]
+                "aktif":i[6],
+                "km": i[7],
+                "yil": i[8],
+                "vites": i[9]
             }
             for i in ihaleler
         ])
@@ -592,11 +595,6 @@ def ihale_durum_guncelle(ihale_id):
         return jsonify({"hata": str(e)}), 500
     
 
-
-
-          
-
- 
 if __name__ == '__main__':
           app.run(debug=True)
 

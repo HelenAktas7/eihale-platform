@@ -11,7 +11,6 @@ import AdminIhaleDetay from "./components/AdminIhaleDetay";
 import AdminKullaniciTeklifler from "./components/AdminKullaniciTeklifler";
 import { useState } from "react";
 import Arsiv from "./pages/Arsiv";
-
 function AppContent() {
   const [aramaMetni, setAramaMetni] = useState("");
   const location = useLocation();
