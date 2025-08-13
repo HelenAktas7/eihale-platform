@@ -52,16 +52,46 @@ def insert_kullanici(isim, email, sifre, rol):
 
    
 
-def insert_ihale(baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, kategori_id, olusturan_id):
+def insert_ihale(baslik, aciklama, baslangic_tarihi, bitis_tarihi,
+                 kategori_id, olusturan_id,
+                 yil=None, vites=None, km=None, yakit_turu=None, renk=None,
+                 metrekare=None, oda_sayisi=None, bina_yasi=None,
+                 hizmet_turu=None, sure_gun=None):
     try:
         cursor = connection.cursor()
         ihale_id = str(uuid.uuid4())
+
         cursor.execute("""
-            INSERT INTO ihaleler (id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, olusturan_id, aktif, kategori_id)
-            VALUES (:1, :2, :3, TO_DATE(:4, 'YYYY-MM-DD"T"HH24:MI'), TO_DATE(:5, 'YYYY-MM-DD"T"HH24:MI'), :6, :7, 1, :8)
+            INSERT INTO ihaleler (id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id, aktif, kategori_id)
+            VALUES (:1, :2, :3, TO_DATE(:4, 'YYYY-MM-DD"T"HH24:MI'), TO_DATE(:5, 'YYYY-MM-DD"T"HH24:MI'), :6, 1, :7)
         """, (
-            ihale_id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, olusturan_id, kategori_id
+            ihale_id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id, kategori_id
         ))
+
+        if yil and vites and km and yakit_turu and renk:
+            cursor.execute("""
+                INSERT INTO ihale_arac_detaylari (id, ihale_id, yil, vites, km, yakit_turu, renk)
+                VALUES (:1, :2, :3, :4, :5, :6, :7)
+            """, (
+                str(uuid.uuid4()), ihale_id, yil, vites, km, yakit_turu, renk
+            ))
+
+        if metrekare and oda_sayisi and bina_yasi:
+            cursor.execute("""
+                INSERT INTO ihale_yapi_detaylari (id, ihale_id, metrekare, oda_sayisi, bina_yasi)
+                VALUES (:1, :2, :3, :4, :5)
+            """, (
+                str(uuid.uuid4()), ihale_id, metrekare, oda_sayisi, bina_yasi
+            ))
+
+        if hizmet_turu and sure_gun:
+            cursor.execute("""
+                INSERT INTO ihale_hizmet_detaylari (id, ihale_id, hizmet_turu, sure_gun)
+                VALUES (:1, :2, :3, :4)
+            """, (
+                str(uuid.uuid4()), ihale_id, hizmet_turu, sure_gun
+            ))
+
         connection.commit()
         print("İhale başarıyla eklendi. İhale ID:", ihale_id)
         return ihale_id
@@ -71,6 +101,8 @@ def insert_ihale(baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bed
     finally:
         if cursor:
             cursor.close()
+
+
 def insert_ihale_gorsel(ihale_id, file):
     cursor = connection.cursor()
     try:
@@ -146,14 +178,35 @@ def get_all_kullanicilar():
         return []
     
 def get_all_ihaleler():
-    try:
-        cursor = connection.cursor()
-        query = "SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id, aktif ,km,yil,vites FROM ihaleler"
-        cursor.execute(query)
-        return cursor.fetchall()
-    except Exception as e:
-        print("Hata:", e)
-        return []
+    cursor = connection.cursor()
+    cursor.execute("""
+        SELECT i.id, i.baslik, i.aciklama, 
+               i.baslangic_tarihi, i.bitis_tarihi, 
+               i.olusturan_id, i.aktif
+        FROM ihaleler i
+    """)
+    ihaleler = []
+    for row in cursor.fetchall():
+        cursor2 = connection.cursor()
+        cursor2.execute("""
+            SELECT resim_adi FROM ihale_gorselleri
+            WHERE ihale_id = :ihale_id
+        """, {"ihale_id": row[0]})
+        resimler = [r[0] for r in cursor2.fetchall()]
+        cursor2.close()
+        ihaleler.append({
+            "id": row[0],
+            "baslik": row[1],
+            "aciklama": row[2],
+            "baslangic_tarihi": str(row[3]),
+            "bitis_tarihi": str(row[4]),
+            "olusturan_id": row[5],
+            "aktif": row[6],
+            "resimler": resimler
+        })
+    cursor.close()
+    return ihaleler
+
 
 def get_kazananlar():
     try:
@@ -353,12 +406,26 @@ def db_get_user_by_id(user_id: str):
 
 def db_list_auctions_by_creator(user_id: str):
     rows = fetch_all("""
-        SELECT id, baslik, bitis_tarihi, aktif
-        FROM ihaleler
-        WHERE olusturan_id = :id
-        ORDER BY bitis_tarihi DESC
+        SELECT i.id, i.baslik, i.bitis_tarihi, i.aktif,
+               COALESCE(LISTAGG(g.resim_adi, ',') WITHIN GROUP (ORDER BY g.resim_adi), '') as resimler
+        FROM ihaleler i
+        LEFT JOIN ihale_gorselleri g ON i.id = g.ihale_id
+        WHERE i.olusturan_id = :id
+        GROUP BY i.id, i.baslik, i.bitis_tarihi, i.aktif
+        ORDER BY i.bitis_tarihi DESC
     """, {"id": user_id})
-    return [{"id": r[0], "baslik": r[1], "bitis_tarihi": str(r[2]), "aktif": r[3]} for r in rows]
+
+    result = []
+    for r in rows:
+        resimler = r[4].split(",") if r[4] else []
+        result.append({
+            "id": r[0],
+            "baslik": r[1],
+            "bitis_tarihi": str(r[2]),
+            "aktif": r[3],
+            "resimler": resimler
+        })
+    return result
 
 def db_list_distinct_bidded_auctions(user_id: str):
     rows = fetch_all("""

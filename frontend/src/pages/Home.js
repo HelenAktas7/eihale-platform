@@ -15,15 +15,21 @@ function Home() {
     const [maxFiyat, setMaxFiyat] = useState("");
     const [sirala, setSirala] = useState("tarih");
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        fetch("http://localhost:5000/ihaleler", {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
+        fetch("http://localhost:5000/ihaleler")
             .then(res => res.json())
-            .then((data) => setIhaleler(data))
-            .catch(err => console.error("İhaleler çekilemedi:", err));
+            .then(data => {
+                console.log("Backend verisi:", data);
+                if (Array.isArray(data)) {
+                    setIhaleler(data);
+                } else {
+                    setIhaleler([]);
+                }
+            })
+            .catch(err => {
+                console.error("Fetch hatası:", err);
+                setIhaleler([]);
+            });
+
     }, []);
 
 

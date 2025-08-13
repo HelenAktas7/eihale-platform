@@ -6,7 +6,8 @@ from flask_cors import CORS
 from db import connection
 from datetime import datetime, timedelta
 import bcrypt
-
+import traceback
+from flask import send_from_directory
 def token_gerektiriyor(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -132,45 +133,73 @@ import uuid
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
 @app.route("/ihale", methods=["POST"])
 @token_gerektiriyor
 def ihale_olustur():
     try:
-        kullanici_id = request.decoded_token.get("id")
+        print("---- İhale oluşturma isteği geldi ----")
 
-    
+        kullanici_id = request.decoded_token.get("id")
         baslik = request.form.get("baslik")
         aciklama = request.form.get("aciklama")
         baslangic_tarihi = request.form.get("baslangic_tarihi")
         bitis_tarihi = request.form.get("bitis_tarihi")
-        baslangic_bedeli = request.form.get("baslangic_bedeli")
         kategori_kod = request.form.get("kategori_id")
+
+        print("Gelen veriler:", baslik, aciklama, baslangic_tarihi, bitis_tarihi, kategori_kod)
 
         cur = connection.cursor()
         cur.execute("SELECT id FROM kategoriler WHERE kod = :kod", {"kod": kategori_kod})
         kategori_id_row = cur.fetchone()
         if not kategori_id_row:
+            print("Kategori bulunamadı:", kategori_kod)
             return jsonify({"hata": "Geçersiz kategori"}), 400
         kategori_id = kategori_id_row[0]
         cur.close()
 
-    
+        yil = vites = km = yakit_turu = renk = None
+        metrekare = oda_sayisi = bina_yasi = None
+        hizmet_turu = sure_gun = None
+
+        if kategori_kod == "arac":
+            yil = request.form.get("yil")
+            vites = request.form.get("vites")
+            km = request.form.get("km")
+            yakit_turu = request.form.get("yakit_turu")
+            renk = request.form.get("renk")
+        elif kategori_kod == "yapi":
+            metrekare = request.form.get("metrekare")
+            oda_sayisi = request.form.get("oda_sayisi")
+            bina_yasi = request.form.get("bina_yasi")
+        elif kategori_kod == "hizmet":
+            hizmet_turu = request.form.get("hizmet_turu")
+            sure_gun = request.form.get("sure_gun")
+
+        resim_dosyalar = request.files.getlist("resimler")
+        print("Gelen dosya sayısı:", len(resim_dosyalar))
+        print("Dosya isimleri:", [f.filename for f in resim_dosyalar])
+
         ihale_id = insert_ihale(
             baslik, aciklama, baslangic_tarihi, bitis_tarihi,
-            baslangic_bedeli, kategori_id, kullanici_id
+            kategori_id, kullanici_id, yil, vites, km, yakit_turu, renk,
+            metrekare, oda_sayisi, bina_yasi,
+            hizmet_turu, sure_gun
         )
+        for resim in resim_dosyalar:
+            if resim and resim.filename:
+                insert_ihale_gorsel(ihale_id, resim)
 
-     
-        if "resimler" in request.files:
-            files = request.files.getlist("resimler")
-            for file in files:
-                insert_ihale_gorsel(ihale_id, file)
-
-        return jsonify({"mesaj": "İhale başarıyla oluşturuldu", "ihale_id": ihale_id})
+        return jsonify({"mesaj": "İhale başarıyla oluşturuldu"})
 
     except Exception as e:
-        connection.rollback()
+        traceback.print_exc()
         return jsonify({"hata": str(e)}), 500
+
 
 
 @app.route('/teklif', methods=['POST'])
@@ -215,23 +244,10 @@ def get_teklifler_by_ihale(ihale_id):
 def tum_ihaleleri_getir():
     try:
         ihaleler = get_all_ihaleler()
-        return jsonify([
-            {
-                "id": i[0],
-                "baslik": i[1],
-                "aciklama": i[2],
-                "baslangic_tarihi": str(i[3]),
-                "bitis_tarihi": str(i[4]),
-                "olusturan_id": i[5],
-                "aktif":i[6],
-                "km": i[7],
-                "yil": i[8],
-                "vites": i[9]
-            }
-            for i in ihaleler
-        ])
+        return jsonify(ihaleler)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/kazananlar', methods=['GET'])
 def kazananlari_getir():

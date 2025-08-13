@@ -13,6 +13,7 @@ import AdminKullaniciTeklifler from "./components/AdminKullaniciTeklifler";
 import { useState } from "react";
 import Arsiv from "./pages/Arsiv";
 import 'bootstrap/dist/css/bootstrap.min.css';
+
 function AppContent() {
   const [aramaMetni, setAramaMetni] = useState("");
   const location = useLocation();
