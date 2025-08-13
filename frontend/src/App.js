@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
 import UserPanel from "./pages/UserPanel";
+import IhaleOlustur from "./pages/IhaleOlustur";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import IhaleDetay from "./components/IhaleDetay";
@@ -11,6 +12,7 @@ import AdminIhaleDetay from "./components/AdminIhaleDetay";
 import AdminKullaniciTeklifler from "./components/AdminKullaniciTeklifler";
 import { useState } from "react";
 import Arsiv from "./pages/Arsiv";
+import 'bootstrap/dist/css/bootstrap.min.css';
 function AppContent() {
   const [aramaMetni, setAramaMetni] = useState("");
   const location = useLocation();
@@ -62,6 +64,8 @@ function AppContent() {
           path="/admin/kullanici/:kullaniciId/teklifler"
           element={<AdminKullaniciTeklifler />}
         />
+        <Route path="/kullanici" element={<UserPanel />} />
+        <Route path="/ihale-olustur" element={<IhaleOlustur />} />
       </Routes>
     </>
   );
@@ -71,6 +75,7 @@ function App() {
     <Router>
       <AppContent />
     </Router>
+
   )
 }
 

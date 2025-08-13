@@ -5,7 +5,7 @@ from teklif_services import get_teklifler_by_kullanici_id
 from flask_cors import CORS
 from db import connection
 from datetime import datetime, timedelta
-
+import bcrypt
 
 def token_gerektiriyor(f):
     @wraps(f)
@@ -20,6 +20,7 @@ def token_gerektiriyor(f):
         try:
             decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             request.kullanici = decoded_token
+            request.decoded_token = decoded_token
         except Exception as e:
             return jsonify({"message": "Token doğrulama başarısız", "hata": str(e)}), 403
 
@@ -55,7 +56,15 @@ from db import (
     get_suresi_gecmis_ihaleler,
     get_ihaleler_by_kullanici_id,
     get_teklifler_by_ihale_id,
-    update_teklif
+    update_teklif,
+    db_get_user_by_id,
+    db_list_auctions_by_creator,
+    db_list_distinct_bidded_auctions,
+    db_list_won_auctions,
+    db_update_profile,
+    db_get_password_hash,
+    db_update_password_hash,
+    insert_ihale_gorsel
 )
 
 SECRET_KEY = 'cok-gizli-anahtarim'
@@ -66,6 +75,27 @@ CORS(app)
 @app.route('/')
 def home():
     return jsonify(message="E-Ihale sistemi basariyla calisiyor!")
+FIELD_SPECS = {
+    "arac": [
+        {"name": "marka", "label": "Marka", "type": "text"},
+        {"name": "model", "label": "Model", "type": "text"},
+        {"name": "yil", "label": "Yıl", "type": "number"},
+        {"name": "km", "label": "Km", "type": "number"},
+        {"name": "vites", "label": "Vites", "type": "select", "options": ["Manuel", "Otomatik"]},
+        {"name": "yakit", "label": "Yakıt", "type": "select", "options": ["Benzin", "Dizel", "LPG", "Hibrit", "Elektrik"]}
+    ],
+    "yapi": [
+        {"name": "is_turu", "label": "İş Türü", "type": "text"},
+        {"name": "metrekare", "label": "Metrekare", "type": "number"},
+        {"name": "konum", "label": "Konum", "type": "text"},
+        {"name": "tahmini_bedel", "label": "Tahmini Bedel", "type": "number"}
+    ],
+    "hizmet": [
+        {"name": "hizmet_turu", "label": "Hizmet Türü", "type": "text"},
+        {"name": "sure_ay", "label": "Süre (Ay)", "type": "number"},
+        {"name": "kapsam", "label": "Kapsam", "type": "textarea"}
+    ]
+}
 
 @app.route('/kullanicilar', methods=['GET'])
 def get_kullanicilar():
@@ -95,23 +125,53 @@ def yeni_kullanici_ekle():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/ihale', methods=['POST'])
-@token_gerektiriyor
+import os
+from werkzeug.utils import secure_filename
+import uuid
 
-def yeni_ihale_ekle(current_user):
-    veri = request.get_json()
-    try: 
-        data=request.get_json()
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+@app.route("/ihale", methods=["POST"])
+@token_gerektiriyor
+def ihale_olustur():
+    try:
+        kullanici_id = request.decoded_token.get("id")
+
+    
+        baslik = request.form.get("baslik")
+        aciklama = request.form.get("aciklama")
+        baslangic_tarihi = request.form.get("baslangic_tarihi")
+        bitis_tarihi = request.form.get("bitis_tarihi")
+        baslangic_bedeli = request.form.get("baslangic_bedeli")
+        kategori_kod = request.form.get("kategori_id")
+
+        cur = connection.cursor()
+        cur.execute("SELECT id FROM kategoriler WHERE kod = :kod", {"kod": kategori_kod})
+        kategori_id_row = cur.fetchone()
+        if not kategori_id_row:
+            return jsonify({"hata": "Geçersiz kategori"}), 400
+        kategori_id = kategori_id_row[0]
+        cur.close()
+
+    
         ihale_id = insert_ihale(
-            veri["baslik"],
-            veri["aciklama"],
-            veri["baslangic_tarihi"],
-            veri["bitis_tarihi"],
-            current_user["id"]
+            baslik, aciklama, baslangic_tarihi, bitis_tarihi,
+            baslangic_bedeli, kategori_id, kullanici_id
         )
-        return jsonify({"message": "Ihale eklendi", "id": ihale_id}), 201
+
+     
+        if "resimler" in request.files:
+            files = request.files.getlist("resimler")
+            for file in files:
+                insert_ihale_gorsel(ihale_id, file)
+
+        return jsonify({"mesaj": "İhale başarıyla oluşturuldu", "ihale_id": ihale_id})
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        connection.rollback()
+        return jsonify({"hata": str(e)}), 500
+
 
 @app.route('/teklif', methods=['POST'])
 
@@ -593,7 +653,99 @@ def ihale_durum_guncelle(ihale_id):
         return jsonify({"mesaj": "Durum güncellendi"})
     except Exception as e:
         return jsonify({"hata": str(e)}), 500
-    
+@app.route("/kullanici/me", methods=["GET"])
+@token_gerektiriyor
+def me():
+    try:
+        kullanici_id = request.decoded_token.get("id")
+        user = db_get_user_by_id(kullanici_id)
+        if not user:
+            return jsonify({"hata": "Kullanici bulunamadi"}), 404
+        return jsonify(user)
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+
+@app.route("/kullanici/ihalelerim", methods=["GET"])
+@token_gerektiriyor
+def my_auctions():
+    try:
+        kullanici_id = request.decoded_token.get("id")
+        data = db_list_auctions_by_creator(kullanici_id)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+
+
+@app.route("/kullanici/tekliflerim", methods=["GET"])
+@token_gerektiriyor
+def my_bids():
+    try:
+        kullanici_id = request.decoded_token.get("id")
+        data = db_list_distinct_bidded_auctions(kullanici_id)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+
+@app.route("/kullanici/kazandiklarim", methods=["GET"])
+@token_gerektiriyor
+def my_wins():
+    try:
+        kullanici_id = request.decoded_token.get("id")
+        data = db_list_won_auctions(kullanici_id)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+
+@app.route("/kullanici/profil", methods=["PUT"])
+@token_gerektiriyor
+def update_my_profile():
+    try:
+        kullanici_id = request.decoded_token.get("id")
+        body = request.get_json(force=True)
+
+        for field in ("isim", "email", "telefon"):
+            if field not in body:
+                return jsonify({"hata": f"eksik alan: {field}"}), 400
+
+        db_update_profile(kullanici_id, body["isim"], body["email"], body["telefon"])
+        return jsonify({"mesaj": "Profil guncellendi"})
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+@app.route("/kullanici/parola", methods=["PUT"])
+@token_gerektiriyor
+def change_password():
+    try:
+        kullanici_id = request.decoded_token.get("id")
+        body = request.get_json(force=True)
+
+        old_pass = body.get("eski_sifre")
+        new_pass = body.get("yeni_sifre")
+        if not old_pass or not new_pass:
+            return jsonify({"hata": "eski_sifre ve yeni_sifre gerekli"}), 400
+
+        stored_hash = db_get_password_hash(kullanici_id)
+        if not stored_hash:
+            return jsonify({"hata": "Kullanici bulunamadi"}), 404
+
+        if not bcrypt.checkpw(old_pass.encode("utf-8"), stored_hash.encode("utf-8")):
+            return jsonify({"hata": "Eski sifre yanlis"}), 400
+
+        new_hash = bcrypt.hashpw(new_pass.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        db_update_password_hash(kullanici_id, new_hash)
+
+        return jsonify({"mesaj": "Parola guncellendi"})
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500   
+@app.route("/kategoriler", methods=["GET"])
+def kategoriler():
+    cur = connection.cursor()
+    cur.execute("SELECT kod, ad FROM kategoriler ORDER BY ad")
+    rows = cur.fetchall()
+    return jsonify([{"kod": r[0], "ad": r[1]} for r in rows])
+
+@app.route("/kategoriler/<kod>/alanlar", methods=["GET"])
+def kategori_alanlar(kod):
+    return jsonify(FIELD_SPECS.get(kod, []))
 
 if __name__ == '__main__':
           app.run(debug=True)

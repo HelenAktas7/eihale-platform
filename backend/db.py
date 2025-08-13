@@ -2,13 +2,31 @@ import oracledb
 import uuid
 import datetime
 from datetime import datetime
+import os
+from werkzeug.utils import secure_filename
+
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 connection = oracledb.connect(
     user="system",
     password="34281",
     dsn="localhost:1521/XEPDB1"
 )
+def fetch_one(query: str, params: dict):
+    with connection.cursor() as cur:
+        cur.execute(query, params)
+        return cur.fetchone()
 
+def fetch_all(query: str, params: dict):
+    with connection.cursor() as cur:
+        cur.execute(query, params)
+        return cur.fetchall()
+
+def execute(query: str, params: dict):
+    with connection.cursor() as cur:
+        cur.execute(query, params)
+    connection.commit()
 def insert_kullanici(isim, email, sifre, rol):
     try:
         user_id = str(uuid.uuid4())
@@ -34,22 +52,45 @@ def insert_kullanici(isim, email, sifre, rol):
 
    
 
-def insert_ihale(baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id):
+def insert_ihale(baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, kategori_id, olusturan_id):
     try:
         cursor = connection.cursor()
         ihale_id = str(uuid.uuid4())
         cursor.execute("""
-            INSERT INTO ihaleler (id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id)
-            VALUES (:1, :2, :3, TO_DATE(:4, 'YYYY-MM-DD'), TO_DATE(:5, 'YYYY-MM-DD'), :6)
-        """, (ihale_id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id))
+            INSERT INTO ihaleler (id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, olusturan_id, aktif, kategori_id)
+            VALUES (:1, :2, :3, TO_DATE(:4, 'YYYY-MM-DD"T"HH24:MI'), TO_DATE(:5, 'YYYY-MM-DD"T"HH24:MI'), :6, :7, 1, :8)
+        """, (
+            ihale_id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, olusturan_id, kategori_id
+        ))
         connection.commit()
-        print("İhale basariyla eklendi.İhale id:",ihale_id,"olusturan id :",olusturan_id)
+        print("İhale başarıyla eklendi. İhale ID:", ihale_id)
         return ihale_id
     except oracledb.Error as e:
-        print("Hata olustu:", e)
+        print("Hata oluştu:", e)
+        raise
     finally:
         if cursor:
             cursor.close()
+def insert_ihale_gorsel(ihale_id, file):
+    cursor = connection.cursor()
+    try:
+        if file.filename != "":
+            filename = secure_filename(file.filename)
+            unique_name = f"{uuid.uuid4()}_{filename}"
+            filepath = os.path.join(UPLOAD_FOLDER, unique_name)
+            file.save(filepath)
+
+            cursor.execute("""
+                INSERT INTO ihale_gorselleri (id, ihale_id, resim_adi)
+                VALUES (:1, :2, :3)
+            """, (str(uuid.uuid4()), ihale_id, unique_name))
+            connection.commit()
+    except Exception as e:
+        print("Görsel ekleme hatası:", e)
+        raise
+    finally:
+        cursor.close()
+
 
 def insert_teklif(ihale_id, kullanici_id, teklif_miktari, teklif_tarihi):
     try:
@@ -299,6 +340,67 @@ def update_teklif(teklif_id,yeni_miktar):
         print("Teklif guncelleme hatasi:",e)
         return False    
 
+def db_get_user_by_id(user_id: str):
+    """Return dict or None"""
+    row = fetch_one("""
+        SELECT id, isim, email, telefon
+        FROM kullanicilar
+        WHERE id = :id
+    """, {"id": user_id})
+    if not row:
+        return None
+    return {"id": row[0], "isim": row[1], "email": row[2], "telefon": row[3]}
+
+def db_list_auctions_by_creator(user_id: str):
+    rows = fetch_all("""
+        SELECT id, baslik, bitis_tarihi, aktif
+        FROM ihaleler
+        WHERE olusturan_id = :id
+        ORDER BY bitis_tarihi DESC
+    """, {"id": user_id})
+    return [{"id": r[0], "baslik": r[1], "bitis_tarihi": str(r[2]), "aktif": r[3]} for r in rows]
+
+def db_list_distinct_bidded_auctions(user_id: str):
+    rows = fetch_all("""
+        SELECT DISTINCT i.id, i.baslik, i.bitis_tarihi
+        FROM teklifler t
+        JOIN ihaleler i ON t.ihale_id = i.id
+        WHERE t.kullanici_id = :id
+        ORDER BY i.bitis_tarihi DESC
+    """, {"id": user_id})
+    return [{"id": r[0], "baslik": r[1], "bitis_tarihi": str(r[2])} for r in rows]
+
+def db_list_won_auctions(user_id: str):
+    rows = fetch_all("""
+        SELECT i.id, i.baslik, i.bitis_tarihi, t.teklif_miktari
+        FROM teklifler t
+        JOIN ihaleler i ON t.ihale_id = i.id
+        WHERE t.kullanici_id = :id
+          AND t.teklif_miktari = (
+            SELECT MAX(teklif_miktari)
+            FROM teklifler
+            WHERE ihale_id = i.id
+          )
+        ORDER BY i.bitis_tarihi DESC
+    """, {"id": user_id})
+    return [{
+        "id": r[0], "baslik": r[1],
+        "bitis_tarihi": str(r[2]), "teklif_miktari": r[3]
+    } for r in rows]
+
+def db_update_profile(user_id: str, isim: str, email: str, telefon: str):
+    execute("""
+        UPDATE kullanicilar
+        SET isim = :isim, email = :email, telefon = :telefon
+        WHERE id = :id
+    """, {"isim": isim, "email": email, "telefon": telefon, "id": user_id})
+
+def db_get_password_hash(user_id: str):
+    row = fetch_one("SELECT sifre FROM kullanicilar WHERE id = :id", {"id": user_id})
+    return row[0] if row else None
+
+def db_update_password_hash(user_id: str, new_hash: str):
+    execute("UPDATE kullanicilar SET sifre = :s WHERE id = :id", {"s": new_hash, "id": user_id})
 
 
 
