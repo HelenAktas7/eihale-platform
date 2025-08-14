@@ -10,6 +10,7 @@ function UserPanel() {
     const navigate = useNavigate();
 
     const token = localStorage.getItem("token");
+    const BASE_IMAGE_URL = "http://localhost:5000/uploads";
 
     useEffect(() => {
         const urlMap = {
@@ -46,7 +47,7 @@ function UserPanel() {
                                         <Carousel.Item key={idx}>
                                             <img
                                                 className="d-block w-100"
-                                                src={`http://localhost:5000/uploads/${resim}`}
+                                                src={`${BASE_IMAGE_URL}/${resim}`}
                                                 alt={`${ihale.baslik} resmi ${idx + 1}`}
                                                 style={{ height: "200px", objectFit: "cover" }}
                                             />

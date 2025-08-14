@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AnaNavbar from "../components/AnaNavbar";
+
 function Home() {
     const [ihaleler, setIhaleler] = useState([]);
     const navigate = useNavigate();
@@ -14,6 +15,7 @@ function Home() {
     const [minFiyat, setMinFiyat] = useState("");
     const [maxFiyat, setMaxFiyat] = useState("");
     const [sirala, setSirala] = useState("tarih");
+
     useEffect(() => {
         fetch("http://localhost:5000/ihaleler")
             .then(res => res.json())
@@ -29,23 +31,31 @@ function Home() {
                 console.error("Fetch hatası:", err);
                 setIhaleler([]);
             });
-
     }, []);
-
 
     return (
         <>
             <AnaNavbar />
             <div style={kapsayiciKart}>
-
                 <div style={inputGrup}>
                     <input
-                        placeholder="İhale Adı" value={ihaleAdi}
+                        placeholder="İhale Adı"
+                        value={ihaleAdi}
                         onChange={(e) => setIhaleAdi(e.target.value)}
                         style={inputStyle}
                     />
-                    <input placeholder="İhale Numarası" value={ihaleNumarasi} onChange={(e) => setIhaleNumarasi(e.target.value)} style={inputStyle} />
-                    <input placeholder="İhale İçeriğinde Adı" value={ihaleIcerigi} onChange={(e) => setIhaleIcerigi(e.target.value)} style={inputStyle} />
+                    <input
+                        placeholder="İhale Numarası"
+                        value={ihaleNumarasi}
+                        onChange={(e) => setIhaleNumarasi(e.target.value)}
+                        style={inputStyle}
+                    />
+                    <input
+                        placeholder="İhale İçeriğinde Adı"
+                        value={ihaleIcerigi}
+                        onChange={(e) => setIhaleIcerigi(e.target.value)}
+                        style={inputStyle}
+                    />
                 </div>
                 {gelismisGoster && (
                     <div style={gelismisAlan}>
@@ -68,9 +78,8 @@ function Home() {
                         {gelismisGoster ? "GİZLE" : "GELİŞMİŞ"}
                     </button>
                 </div>
-
-
             </div>
+
             <div style={{
                 background: "#ffc107",
                 display: "inline-block",
@@ -81,6 +90,7 @@ function Home() {
             }}>
                 {ihaleler.length} ADET BULUNDU
             </div>
+
             <select
                 value={sirala}
                 onChange={(e) => setSirala(e.target.value)}
@@ -89,10 +99,12 @@ function Home() {
                     borderRadius: "5px",
                     margin: "0 1rem 1rem 1rem"
                 }}
-            >    <option value="tarih">Tarih (En Erken Bitecek)</option>
+            >
+                <option value="tarih">Tarih (En Erken Bitecek)</option>
                 <option value="fiyatArtan">Fiyat (Artan)</option>
                 <option value="fiyatAzalan">Fiyat (Azalan)</option>
             </select>
+
             <div style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
@@ -118,7 +130,15 @@ function Home() {
                             e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
                         }}>
 
-                        <img src={ihale.resimURL} alt={ihale.baslik} style={{ width: "100%", height: "200px", objectFit: "cover" }} />
+                        <img
+                            src={
+                                ihale.resimler && ihale.resimler.length > 0
+                                    ? `http://localhost:5000/uploads/${ihale.resimler[0]}`
+                                    : "https://via.placeholder.com/400x200?text=Görsel+Yok"
+                            }
+                            alt={ihale.baslik}
+                            style={{ width: "100%", height: "200px", objectFit: "cover" }}
+                        />
 
                         <div style={{ padding: "1rem" }}>
                             {ihale.aktif === 1 && (
@@ -131,9 +151,29 @@ function Home() {
                             <p><strong>Başlangıç Bedeli:</strong> ₺{ihale.baslangic_bedeli}</p>
                             <p>{ihale.teklifVarMi ? "Teklif Mevcut" : "Teklif Mevcut Değil"}</p>
                             <p>🗓 {new Date(ihale.bitis_tarihi).toLocaleString()}</p>
-                            <p><strong>Yıl:</strong> {ihale.yil}</p>
-                            <p><strong>Km:</strong> {ihale.km} km</p>
-                            <p><strong>Vites:</strong> {ihale.vites}</p>
+
+                            {ihale.kategori_kod === "arac" && (
+                                <>
+                                    <p><strong>Yıl:</strong> {ihale.yil}</p>
+                                    <p><strong>Km:</strong> {ihale.km}</p>
+                                    <p><strong>Vites:</strong> {ihale.vites}</p>
+                                </>
+                            )}
+
+                            {ihale.kategori_kod === "yapi" && (
+                                <>
+                                    <p><strong>Metrekare:</strong> {ihale.metrekare}</p>
+                                    <p><strong>Oda Sayısı:</strong> {ihale.oda_sayisi}</p>
+                                    <p><strong>Bina Yaşı:</strong> {ihale.bina_yasi}</p>
+                                </>
+                            )}
+
+                            {ihale.kategori_kod === "hizmet" && (
+                                <>
+                                    <p><strong>Hizmet Türü:</strong> {ihale.hizmet_turu}</p>
+                                    <p><strong>Süre (gün):</strong> {ihale.sure_gun}</p>
+                                </>
+                            )}
 
                             <button
                                 onClick={() => navigate(`/ihale/${ihale.id}`)}
@@ -157,6 +197,7 @@ function Home() {
         </>
     );
 }
+
 const kapsayiciKart = {
     background: "#fff",
     padding: "2rem",
@@ -164,7 +205,6 @@ const kapsayiciKart = {
     boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
     margin: "2rem auto",
     maxWidth: "90%"
-
 };
 
 const inputGrup = {
@@ -179,6 +219,7 @@ const gelismisAlan = {
     flexWrap: "wrap",
     gap: "1rem"
 };
+
 const inputStyle = {
     padding: "0.5rem",
     border: "1px solid #ccc",
@@ -205,4 +246,5 @@ const araButon = {
     color: "#fff",
     cursor: "pointer"
 };
+
 export default Home;

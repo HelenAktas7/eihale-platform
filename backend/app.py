@@ -7,7 +7,13 @@ from db import connection
 from datetime import datetime, timedelta
 import bcrypt
 import traceback
+import os
+import uuid
+from werkzeug.utils import secure_filename
 from flask import send_from_directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def token_gerektiriyor(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -64,8 +70,7 @@ from db import (
     db_list_won_auctions,
     db_update_profile,
     db_get_password_hash,
-    db_update_password_hash,
-    insert_ihale_gorsel
+    db_update_password_hash
 )
 
 SECRET_KEY = 'cok-gizli-anahtarim'
@@ -126,14 +131,6 @@ def yeni_kullanici_ekle():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-import os
-from werkzeug.utils import secure_filename
-import uuid
-
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
@@ -145,6 +142,7 @@ def ihale_olustur():
         print("---- İhale oluşturma isteği geldi ----")
 
         kullanici_id = request.decoded_token.get("id")
+
         baslik = request.form.get("baslik")
         aciklama = request.form.get("aciklama")
         baslangic_tarihi = request.form.get("baslangic_tarihi")
@@ -157,44 +155,52 @@ def ihale_olustur():
         cur.execute("SELECT id FROM kategoriler WHERE kod = :kod", {"kod": kategori_kod})
         kategori_id_row = cur.fetchone()
         if not kategori_id_row:
-            print("Kategori bulunamadı:", kategori_kod)
             return jsonify({"hata": "Geçersiz kategori"}), 400
         kategori_id = kategori_id_row[0]
         cur.close()
 
-        yil = vites = km = yakit_turu = renk = None
-        metrekare = oda_sayisi = bina_yasi = None
-        hizmet_turu = sure_gun = None
+        yil = request.form.get("yil") or None
+        km = request.form.get("km") or None
+        vites = request.form.get("vites") or None
+        yakit_turu = request.form.get("yakit_turu") or None
+        renk = request.form.get("renk") or None
 
-        if kategori_kod == "arac":
-            yil = request.form.get("yil")
-            vites = request.form.get("vites")
-            km = request.form.get("km")
-            yakit_turu = request.form.get("yakit_turu")
-            renk = request.form.get("renk")
-        elif kategori_kod == "yapi":
-            metrekare = request.form.get("metrekare")
-            oda_sayisi = request.form.get("oda_sayisi")
-            bina_yasi = request.form.get("bina_yasi")
-        elif kategori_kod == "hizmet":
-            hizmet_turu = request.form.get("hizmet_turu")
-            sure_gun = request.form.get("sure_gun")
+        metrekare = request.form.get("metrekare") or None
+        oda_sayisi = request.form.get("oda_sayisi") or None
+        bina_yasi = request.form.get("bina_yasi") or None
 
-        resim_dosyalar = request.files.getlist("resimler")
-        print("Gelen dosya sayısı:", len(resim_dosyalar))
-        print("Dosya isimleri:", [f.filename for f in resim_dosyalar])
+        hizmet_turu = request.form.get("hizmet_turu") or None
+        sure_gun = request.form.get("sure_gun") or None
 
+      
         ihale_id = insert_ihale(
             baslik, aciklama, baslangic_tarihi, bitis_tarihi,
             kategori_id, kullanici_id, yil, vites, km, yakit_turu, renk,
             metrekare, oda_sayisi, bina_yasi,
             hizmet_turu, sure_gun
         )
-        for resim in resim_dosyalar:
-            if resim and resim.filename:
-                insert_ihale_gorsel(ihale_id, resim)
 
-        return jsonify({"mesaj": "İhale başarıyla oluşturuldu"})
+      
+        resim_dosyalar = request.files.getlist("resimler")
+        print("Gelen dosya sayısı:", len(resim_dosyalar))
+        for file in resim_dosyalar:
+            if file and file.filename:
+                filename = str(uuid.uuid4()) + "_" + secure_filename(file.filename)
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(filepath)
+
+                cur = connection.cursor()
+                cur.execute("""
+                    INSERT INTO ihale_gorselleri (id, ihale_id, resim_adi)
+                    VALUES (seq_ihale_gorsel.NEXTVAL, :ihale_id, :resim_adi)
+                """, {
+                    "ihale_id": ihale_id,
+                    "resim_adi": filename
+                })
+                connection.commit()
+                cur.close()
+
+        return jsonify({"mesaj": "İhale ve görseller başarıyla kaydedildi"})
 
     except Exception as e:
         traceback.print_exc()
