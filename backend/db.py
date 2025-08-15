@@ -4,7 +4,6 @@ import datetime
 from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
-from werkzeug.utils import secure_filename
 from flask import send_from_directory
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 if not os.path.exists(UPLOAD_FOLDER):
@@ -173,9 +172,8 @@ def get_all_kullanicilar():
         print("Hata:", e)
         return []
 def get_all_ihaleler():
-    cursor = connection.cursor()
-
-    cursor.execute("""
+    cur = connection.cursor()
+    cur.execute("""
         SELECT 
             i.id,
             i.baslik,
@@ -185,52 +183,55 @@ def get_all_ihaleler():
             i.olusturan_id,
             i.aktif,
             k.kod AS kategori_kod,
+
             ad.yil,
             ad.km,
             ad.vites,
+            ad.yakit_turu,
+
             yd.metrekare,
             yd.oda_sayisi,
             yd.bina_yasi,
-            h.hizmet_suresi,
-            LISTAGG(g.resim_adi, ',') WITHIN GROUP (ORDER BY g.resim_adi) AS resimler
+
+            hd.hizmet_suresi,
+            hd.kapsam
+
         FROM ihaleler i
-        LEFT JOIN kategoriler k ON i.kategori_id = k.id
+        JOIN kategoriler k ON i.kategori_id = k.id
         LEFT JOIN ihale_arac_detaylari ad ON i.id = ad.ihale_id
         LEFT JOIN ihale_yapi_detaylari yd ON i.id = yd.ihale_id
-        LEFT JOIN ihale_hizmet_detaylari h ON i.id = h.ihale_id
-        LEFT JOIN ihale_gorselleri g ON i.id = g.ihale_id
-        GROUP BY 
-            i.id, i.baslik, i.aciklama, i.baslangic_tarihi, i.bitis_tarihi,
-            i.olusturan_id, i.aktif, k.kod,
-            ad.yil, ad.km, ad.vites,
-            yd.metrekare, yd.oda_sayisi, yd.bina_yasi,
-            h.hizmet_suresi
+        LEFT JOIN ihale_hizmet_detaylari hd ON i.id = hd.ihale_id
         ORDER BY i.baslangic_tarihi DESC
     """)
+    rows = cur.fetchall()
+    cur.close()
 
     ihaleler = []
-    for row in cursor.fetchall():
+    for r in rows:
         ihaleler.append({
-            "id": row[0],
-            "baslik": row[1],
-            "aciklama": row[2],
-            "baslangic_tarihi": str(row[3]) if row[3] else None,
-            "bitis_tarihi": str(row[4]) if row[4] else None,
-            "olusturan_id": row[5],
-            "aktif": row[6],
-            "kategori_kod": row[7],
-            "yil": row[8] if row[8] is not None else "-",
-            "km": row[9] if row[9] is not None else "-",
-            "vites": row[10] if row[10] is not None else "-",
-            "metrekare": row[11] if row[11] is not None else "-",
-            "oda_sayisi": row[12] if row[12] is not None else "-",
-            "bina_yasi": row[13] if row[13] is not None else "-",
-            "hizmet_suresi": row[14] if row[14] is not None else "-",
-            "resimler": row[15].split(",") if row[15] else []
+            "id": r[0],
+            "baslik": r[1],
+            "aciklama": r[2],
+            "baslangic_tarihi": str(r[3]) if r[3] else None,
+            "bitis_tarihi": str(r[4]) if r[4] else None,
+            "olusturan_id": r[5],
+            "aktif": r[6],
+            "kategori_kod": r[7],
+            "yil": r[8],
+            "km": r[9],
+            "vites": r[10],
+            "yakit_turu": r[11],
+            "metrekare": r[12],
+            "oda_sayisi": r[13],
+            "bina_yasi": r[14],
+            "hizmet_suresi": r[15],
+            "kapsam": r[16],
+            "resimler": get_ihale_resimleri(r[0])  
         })
-
-    cursor.close()
     return ihaleler
+
+
+
 
 def get_kazananlar():
     try:

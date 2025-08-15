@@ -139,17 +139,24 @@ def uploaded_file(filename):
 @token_gerektiriyor
 def ihale_olustur():
     try:
+       
         print("---- İhale oluşturma isteği geldi ----")
-
+        print("Kategori kod:", request.form.get("kategori_id"))
+        print("Yıl:", request.form.get("yil"))
+        print("Km:", request.form.get("km"))
+        print("Vites:", request.form.get("vites"))
+        print("Yakıt Türü:", request.form.get("yakit_turu"))
+        print("Metrekare:", request.form.get("metrekare"))
+        print("Oda Sayısı:", request.form.get("oda_sayisi"))
+        print("Bina Yaşı:", request.form.get("bina_yasi"))
+        print("Hizmet Süresi:", request.form.get("hizmet_suresi"))
+        print("Kapsam:", request.form.get("kapsam"))
         kullanici_id = request.decoded_token.get("id")
-
         baslik = request.form.get("baslik")
         aciklama = request.form.get("aciklama")
         baslangic_tarihi = request.form.get("baslangic_tarihi")
         bitis_tarihi = request.form.get("bitis_tarihi")
         kategori_kod = request.form.get("kategori_id")
-
-        print("Gelen veriler:", baslik, aciklama, baslangic_tarihi, bitis_tarihi, kategori_kod)
 
         cur = connection.cursor()
         cur.execute("SELECT id FROM kategoriler WHERE kod = :kod", {"kod": kategori_kod})
@@ -157,53 +164,69 @@ def ihale_olustur():
         if not kategori_id_row:
             return jsonify({"hata": "Geçersiz kategori"}), 400
         kategori_id = kategori_id_row[0]
+
+        ihale_id = str(uuid.uuid4())
+        cur.execute("""
+            INSERT INTO ihaleler (id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, kategori_id, olusturan_id, aktif)
+            VALUES (:id, :baslik, :aciklama, :baslangic_tarihi, :bitis_tarihi, :kategori_id, :olusturan_id, 1)
+        """, {
+            "id": ihale_id,
+            "baslik": baslik,
+            "aciklama": aciklama,
+            "baslangic_tarihi": baslangic_tarihi,
+            "bitis_tarihi": bitis_tarihi,
+            "kategori_id": kategori_id,
+            "olusturan_id": kullanici_id
+        })
+
+        if kategori_kod == "arac":
+            yil = request.form.get("yil")
+            km = request.form.get("km")
+            vites = request.form.get("vites")
+            yakit_turu = request.form.get("yakit_turu")
+            cur.execute("""
+                INSERT INTO ihale_arac_detaylari (ihale_id, yil, km, vites, yakit_turu)
+                VALUES (:ihale_id, :yil, :km, :vites, :yakit_turu)
+            """, {
+                "ihale_id": ihale_id,
+                "yil": yil,
+                "km": km,
+                "vites": vites,
+                "yakit_turu": yakit_turu
+            })
+
+        elif kategori_kod == "yapi":
+            metrekare = request.form.get("metrekare")
+            oda_sayisi = request.form.get("oda_sayisi")
+            bina_yasi = request.form.get("bina_yasi")
+            cur.execute("""
+                INSERT INTO ihale_yapi_detaylari (ihale_id, metrekare, oda_sayisi, bina_yasi)
+                VALUES (:ihale_id, :metrekare, :oda_sayisi, :bina_yasi)
+            """, {
+                "ihale_id": ihale_id,
+                "metrekare": metrekare,
+                "oda_sayisi": oda_sayisi,
+                "bina_yasi": bina_yasi
+            })
+
+        elif kategori_kod == "hizmet":
+            hizmet_suresi = request.form.get("hizmet_suresi")
+            kapsam = request.form.get("kapsam")
+            cur.execute("""
+                INSERT INTO ihale_hizmet_detaylari (ihale_id, hizmet_suresi, kapsam)
+                VALUES (:ihale_id, :hizmet_suresi, :kapsam)
+            """, {
+                "ihale_id": ihale_id,
+                "hizmet_suresi": hizmet_suresi,
+                "kapsam": kapsam
+            })
+
+        connection.commit()
         cur.close()
 
-        yil = request.form.get("yil") or None
-        km = request.form.get("km") or None
-        vites = request.form.get("vites") or None
-        yakit_turu = request.form.get("yakit_turu") or None
-        renk = request.form.get("renk") or None
-
-        metrekare = request.form.get("metrekare") or None
-        oda_sayisi = request.form.get("oda_sayisi") or None
-        bina_yasi = request.form.get("bina_yasi") or None
-
-        hizmet_turu = request.form.get("hizmet_turu") or None
-        sure_gun = request.form.get("sure_gun") or None
-
-      
-        ihale_id = insert_ihale(
-            baslik, aciklama, baslangic_tarihi, bitis_tarihi,
-            kategori_id, kullanici_id, yil, vites, km, yakit_turu, renk,
-            metrekare, oda_sayisi, bina_yasi,
-            hizmet_turu, sure_gun
-        )
-
-      
-        resim_dosyalar = request.files.getlist("resimler")
-        print("Gelen dosya sayısı:", len(resim_dosyalar))
-        for file in resim_dosyalar:
-            if file and file.filename:
-                filename = str(uuid.uuid4()) + "_" + secure_filename(file.filename)
-                filepath = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(filepath)
-
-                cur = connection.cursor()
-                cur.execute("""
-                    INSERT INTO ihale_gorselleri (id, ihale_id, resim_adi)
-                    VALUES (seq_ihale_gorsel.NEXTVAL, :ihale_id, :resim_adi)
-                """, {
-                    "ihale_id": ihale_id,
-                    "resim_adi": filename
-                })
-                connection.commit()
-                cur.close()
-
-        return jsonify({"mesaj": "İhale ve görseller başarıyla kaydedildi"})
+        return jsonify({"mesaj": "İhale başarıyla oluşturuldu", "ihale_id": ihale_id}), 201
 
     except Exception as e:
-        traceback.print_exc()
         return jsonify({"hata": str(e)}), 500
 
 
@@ -245,14 +268,21 @@ def get_teklifler_by_ihale(ihale_id):
         ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+import traceback
+from flask import jsonify
 
 @app.route('/ihaleler', methods=['GET'])
 def tum_ihaleleri_getir():
     try:
         ihaleler = get_all_ihaleler()
-        return jsonify(ihaleler)
+        if not ihaleler:
+            return jsonify({"hata": "Hiç ihale bulunamadı"}), 404
+        return jsonify(ihaleler), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("İhaleler çekme hatası:", e)
+        traceback.print_exc()
+        return jsonify({"hata": "İhaleler alınamadı"}), 500
+
 
 
 @app.route('/kazananlar', methods=['GET'])
