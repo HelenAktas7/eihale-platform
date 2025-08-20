@@ -135,28 +135,38 @@ def yeni_kullanici_ekle():
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
+import os
+import uuid
+import traceback
+from datetime import datetime
+from flask import request, jsonify
+
 @app.route("/ihale", methods=["POST"])
 @token_gerektiriyor
 def ihale_olustur():
     try:
-       
         print("---- İhale oluşturma isteği geldi ----")
         print("Kategori kod:", request.form.get("kategori_id"))
-        print("Yıl:", request.form.get("yil"))
-        print("Km:", request.form.get("km"))
-        print("Vites:", request.form.get("vites"))
-        print("Yakıt Türü:", request.form.get("yakit_turu"))
-        print("Metrekare:", request.form.get("metrekare"))
-        print("Oda Sayısı:", request.form.get("oda_sayisi"))
-        print("Bina Yaşı:", request.form.get("bina_yasi"))
-        print("Hizmet Süresi:", request.form.get("hizmet_suresi"))
-        print("Kapsam:", request.form.get("kapsam"))
+
         kullanici_id = request.decoded_token.get("id")
+
         baslik = request.form.get("baslik")
         aciklama = request.form.get("aciklama")
+        kategori_kod = request.form.get("kategori_id")
+
         baslangic_tarihi = request.form.get("baslangic_tarihi")
         bitis_tarihi = request.form.get("bitis_tarihi")
-        kategori_kod = request.form.get("kategori_id")
+
+        if baslangic_tarihi:
+            baslangic_tarihi = datetime.fromisoformat(baslangic_tarihi)
+        if bitis_tarihi:
+            bitis_tarihi = datetime.fromisoformat(bitis_tarihi)
+
+        baslangic_bedeli = request.form.get("baslangic_bedeli")
+        try:
+            baslangic_bedeli = int(baslangic_bedeli) if baslangic_bedeli else None
+        except ValueError:
+            baslangic_bedeli = None
 
         cur = connection.cursor()
         cur.execute("SELECT id FROM kategoriler WHERE kod = :kod", {"kod": kategori_kod})
@@ -167,14 +177,17 @@ def ihale_olustur():
 
         ihale_id = str(uuid.uuid4())
         cur.execute("""
-            INSERT INTO ihaleler (id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, kategori_id, olusturan_id, aktif)
-            VALUES (:id, :baslik, :aciklama, :baslangic_tarihi, :bitis_tarihi, :kategori_id, :olusturan_id, 1)
+            INSERT INTO ihaleler 
+                (id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, kategori_id, olusturan_id, aktif)
+            VALUES 
+                (:id, :baslik, :aciklama, :baslangic_tarihi, :bitis_tarihi, :baslangic_bedeli, :kategori_id, :olusturan_id, 1)
         """, {
             "id": ihale_id,
             "baslik": baslik,
             "aciklama": aciklama,
             "baslangic_tarihi": baslangic_tarihi,
             "bitis_tarihi": bitis_tarihi,
+            "baslangic_bedeli": baslangic_bedeli,
             "kategori_id": kategori_id,
             "olusturan_id": kullanici_id
         })
@@ -184,15 +197,18 @@ def ihale_olustur():
             km = request.form.get("km")
             vites = request.form.get("vites")
             yakit_turu = request.form.get("yakit_turu")
+            renk=request.form.get("renk")
             cur.execute("""
-                INSERT INTO ihale_arac_detaylari (ihale_id, yil, km, vites, yakit_turu)
-                VALUES (:ihale_id, :yil, :km, :vites, :yakit_turu)
+                INSERT INTO ihale_arac_detaylari (id,ihale_id, yil, km, vites, yakit_turu,renk)
+                VALUES (:id,:ihale_id, :yil, :km, :vites, :yakit_turu,:renk)
             """, {
+                "id":str(uuid.uuid4()),
                 "ihale_id": ihale_id,
-                "yil": yil,
-                "km": km,
-                "vites": vites,
-                "yakit_turu": yakit_turu
+                "yil": yil or None,
+                "km": km or None,
+                "vites": vites or None,
+                "yakit_turu": yakit_turu or None,
+                "renk":renk or None
             })
 
         elif kategori_kod == "yapi":
@@ -200,26 +216,42 @@ def ihale_olustur():
             oda_sayisi = request.form.get("oda_sayisi")
             bina_yasi = request.form.get("bina_yasi")
             cur.execute("""
-                INSERT INTO ihale_yapi_detaylari (ihale_id, metrekare, oda_sayisi, bina_yasi)
-                VALUES (:ihale_id, :metrekare, :oda_sayisi, :bina_yasi)
+                INSERT INTO ihale_yapi_detaylari (id,ihale_id, metrekare, oda_sayisi, bina_yasi)
+                VALUES (:id,:ihale_id, :metrekare, :oda_sayisi, :bina_yasi)
             """, {
+                "id":str(uuid.uuid4()),
                 "ihale_id": ihale_id,
-                "metrekare": metrekare,
-                "oda_sayisi": oda_sayisi,
-                "bina_yasi": bina_yasi
+                "metrekare": metrekare or None,
+                "oda_sayisi": oda_sayisi or None,
+                "bina_yasi": bina_yasi or None
             })
 
         elif kategori_kod == "hizmet":
             hizmet_suresi = request.form.get("hizmet_suresi")
             kapsam = request.form.get("kapsam")
             cur.execute("""
-                INSERT INTO ihale_hizmet_detaylari (ihale_id, hizmet_suresi, kapsam)
-                VALUES (:ihale_id, :hizmet_suresi, :kapsam)
+                INSERT INTO ihale_hizmet_detaylari (id,ihale_id, hizmet_suresi, kapsam)
+                VALUES (:id,:ihale_id, :hizmet_suresi, :kapsam)
             """, {
+                "id":str(uuid.uuid4()),
                 "ihale_id": ihale_id,
-                "hizmet_suresi": hizmet_suresi,
-                "kapsam": kapsam
+                "hizmet_suresi": hizmet_suresi or None,
+                "kapsam": kapsam or None
             })
+
+        resim_dosyalar = request.files.getlist("resimler")
+        print("Gelen dosya sayısı:", len(resim_dosyalar))
+        for file in resim_dosyalar:
+            if file and file.filename:
+                filename = str(uuid.uuid4()) + "_" + file.filename
+                file.save(os.path.join(UPLOAD_FOLDER, filename))
+                cur.execute("""
+                    INSERT INTO ihale_gorselleri (ihale_id, resim_adi)
+                    VALUES (:ihale_id, :resim_adi)
+                """, {
+                    "ihale_id": ihale_id,
+                    "resim_adi": filename
+                })
 
         connection.commit()
         cur.close()
@@ -227,7 +259,9 @@ def ihale_olustur():
         return jsonify({"mesaj": "İhale başarıyla oluşturuldu", "ihale_id": ihale_id}), 201
 
     except Exception as e:
+        traceback.print_exc()  
         return jsonify({"hata": str(e)}), 500
+
 
 
 
@@ -539,18 +573,28 @@ def kazanan_teklifi_getir(ihale_id):
         return jsonify({"hata": str(e)}), 500
     
 
-@app.route("/admin/ihale/<ihale_id>",methods=["DELETE"])
+@app.route("/admin/ihale/<ihale_id>", methods=["DELETE"])
 @token_gerektiriyor
-@admin_gerektiriyor
 def ihale_sil(ihale_id):
-  try:
-      with connection.cursor() as cursor:
-          cursor.execute("DELETE FROM teklifler WHERE ihale_id=:id",{"id":ihale_id})
-          cursor.execute("DELETE FROM ihaleler WHERE id=:id",{"id":ihale_id})
-          connection.commit()
-          return jsonify({"mesaj":"İhale silindi."}),200
-  except Exception as e:
-      return jsonify({"hata":str(e)}),500
+    try:
+        cur = connection.cursor()
+
+  
+        cur.execute("DELETE FROM ihale_gorselleri WHERE ihale_id = :id", {"id": ihale_id})
+
+        cur.execute("DELETE FROM ihale_arac_detaylari WHERE ihale_id = :id", {"id": ihale_id})
+        cur.execute("DELETE FROM ihale_yapi_detaylari WHERE ihale_id = :id", {"id": ihale_id})
+        cur.execute("DELETE FROM ihale_hizmet_detaylari WHERE ihale_id = :id", {"id": ihale_id})
+
+        cur.execute("DELETE FROM ihaleler WHERE id = :id", {"id": ihale_id})
+
+        connection.commit()
+        cur.close()
+        return jsonify({"mesaj": "İhale ve bağlı kayıtları silindi"}), 200
+    except Exception as e:
+        connection.rollback()
+        return jsonify({"hata": str(e)}), 500
+
   
 @app.route("/admin/kullanici/<kullanici_id>", methods=["DELETE"])
 @token_gerektiriyor
