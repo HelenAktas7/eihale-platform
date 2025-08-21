@@ -11,6 +11,7 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 from flask import send_from_directory
+import traceback
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -135,12 +136,6 @@ def yeni_kullanici_ekle():
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-import os
-import uuid
-import traceback
-from datetime import datetime
-from flask import request, jsonify
-
 @app.route("/ihale", methods=["POST"])
 @token_gerektiriyor
 def ihale_olustur():
@@ -152,6 +147,7 @@ def ihale_olustur():
 
         baslik = request.form.get("baslik")
         aciklama = request.form.get("aciklama")
+        konum = request.form.get("konum")
         kategori_kod = request.form.get("kategori_id")
 
         baslangic_tarihi = request.form.get("baslangic_tarihi")
@@ -178,13 +174,14 @@ def ihale_olustur():
         ihale_id = str(uuid.uuid4())
         cur.execute("""
             INSERT INTO ihaleler 
-                (id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, kategori_id, olusturan_id, aktif)
+                (id, baslik, aciklama,konum, baslangic_tarihi, bitis_tarihi, baslangic_bedeli, kategori_id, olusturan_id, aktif)
             VALUES 
-                (:id, :baslik, :aciklama, :baslangic_tarihi, :bitis_tarihi, :baslangic_bedeli, :kategori_id, :olusturan_id, 1)
+                (:id, :baslik, :aciklama,:konum,:baslangic_tarihi, :bitis_tarihi, :baslangic_bedeli, :kategori_id, :olusturan_id, 1)
         """, {
             "id": ihale_id,
             "baslik": baslik,
             "aciklama": aciklama,
+            "konum":konum,
             "baslangic_tarihi": baslangic_tarihi,
             "bitis_tarihi": bitis_tarihi,
             "baslangic_bedeli": baslangic_bedeli,
@@ -416,17 +413,10 @@ def ihale_detaylarini_gor(ihale_id):
         ihale = get_ihale_by_id(ihale_id)
         if not ihale:
             return jsonify({"message": "Ihale bulunamadi"}), 404
-
-        return jsonify({
-            "id": ihale[0],
-            "baslik": ihale[1],
-            "aciklama": ihale[2],
-            "baslangic_tarihi": str(ihale[3]),
-            "bitis_tarihi": str(ihale[4]),
-            "olusturan_id": ihale[5]
-        })
+        return jsonify(ihale), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
     
 @app.route('/kullanici/ihaleler', methods=['GET'])
 @token_gerektiriyor
@@ -789,6 +779,30 @@ def my_wins():
         kullanici_id = request.decoded_token.get("id")
         data = db_list_won_auctions(kullanici_id)
         return jsonify(data)
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+@app.route("/kullanici/profil", methods=["GET"])
+@token_gerektiriyor
+def get_my_profile():
+    try:
+        kullanici_id = request.decoded_token.get("id")
+        cur = connection.cursor()
+        cur.execute("""
+            SELECT isim, email, telefon
+            FROM kullanicilar
+            WHERE id = :id
+        """, {"id": kullanici_id})
+        row = cur.fetchone()
+        cur.close()
+
+        if not row:
+            return jsonify({"hata": "Kullanici bulunamadi"}), 404
+
+        return jsonify({
+            "isim": row[0],
+            "email": row[1],
+            "telefon": row[2]
+        })
     except Exception as e:
         return jsonify({"hata": str(e)}), 500
 

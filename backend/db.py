@@ -274,13 +274,84 @@ def get_db_connection():
     )
 
 def get_ihale_by_id(ihale_id):
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT id, baslik, aciklama, baslangic_tarihi, bitis_tarihi, olusturan_id
-            FROM ihaleler
-            WHERE id = :id
-        """, {"id": ihale_id})
-        return cursor.fetchone()
+    cursor = connection.cursor()
+    cursor.execute("""
+        SELECT 
+            i.id,
+            i.baslik,
+            i.aciklama,
+            i.baslangic_tarihi,
+            i.bitis_tarihi,
+            i.baslangic_bedeli,
+            i.olusturan_id,
+            i.konum,
+            k.kod AS kategori_kod
+        FROM ihaleler i
+        JOIN kategoriler k ON i.kategori_id = k.id
+        WHERE i.id = :id
+    """, {"id": ihale_id})
+    ihale = cursor.fetchone()
+
+    if not ihale:
+        return None
+
+    cursor.execute("""
+        SELECT yil, km, vites, yakit_turu, renk
+        FROM ihale_arac_detaylari
+        WHERE ihale_id = :id
+    """, {"id": ihale_id})
+    arac_detay = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT metrekare, oda_sayisi, bina_yasi
+        FROM ihale_yapi_detaylari
+        WHERE ihale_id = :id
+    """, {"id": ihale_id})
+    yapi_detay = cursor.fetchone()
+  
+    cursor.execute("""
+        SELECT hizmet_suresi, kapsam, calisma_saatleri
+        FROM ihale_hizmet_detaylari
+        WHERE ihale_id = :id
+    """, {"id": ihale_id})
+    hizmet_detay = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT resim_adi
+        FROM ihale_gorselleri
+        WHERE ihale_id = :id
+    """, {"id": ihale_id})
+    resimler = [row[0] for row in cursor.fetchall()]
+
+    return {
+        "id": ihale[0],
+        "baslik": ihale[1],
+        "aciklama": ihale[2],
+        "baslangic_tarihi": str(ihale[3]),
+        "bitis_tarihi": str(ihale[4]),
+        "baslangic_bedeli": ihale[5],
+        "olusturan_id": ihale[6],
+        "konum":ihale[7],
+        "kategori": ihale[8],
+        "ozellikler": {
+          
+            "yil": arac_detay[0] if arac_detay else None,
+            "km": arac_detay[1] if arac_detay else None,
+            "vites": arac_detay[2] if arac_detay else None,
+            "yakit_turu": arac_detay[3] if arac_detay else None,
+            "renk": arac_detay[4] if arac_detay else None,
+          
+            "metrekare": yapi_detay[0] if yapi_detay else None,
+            "oda_sayisi": yapi_detay[1] if yapi_detay else None,
+            "bina_yasi": yapi_detay[2] if yapi_detay else None,
+         
+            "hizmet_suresi": hizmet_detay[0] if hizmet_detay else None,
+            "kapsam": hizmet_detay[1] if hizmet_detay else None,
+            "calisma_saatleri": hizmet_detay[2] if hizmet_detay else None
+        },
+        "resimler": resimler
+    }
+
 
 def get_ihaleler_by_kullanici_id(kullanici_id):
     try:
@@ -313,43 +384,75 @@ def get_ihaleler_by_teklif_veren(kullanici_id):
 def get_ihale_detay(ihale_id):
     try:
         with connection.cursor() as cursor:
+            
             cursor.execute("""
                 SELECT 
                     i.ID,
                     i.BASLIK,
                     i.ACIKLAMA,
+                    i.BASLANGIC_TARIHI,
                     i.BITIS_TARIHI,
-                    (
-                        SELECT MAX(t.TEKLIF_MIKTARI)
-                        FROM TEKLIFLER t
-                        WHERE t.IHALE_ID = i.ID
-                    ) AS en_yuksek_teklif,
-                    (
-                        SELECT COUNT(DISTINCT t.KULLANICI_ID)
-                        FROM TEKLIFLER t
-                        WHERE t.IHALE_ID = i.ID
-                    ) AS katilimci_sayisi
+                    i.BASLANGIC_BEDELI,
+                    i.AKTIF,
+                    k.KOD AS kategori_kod,
+                    ad.YIL,
+                    ad.KM,
+                    ad.VITES,
+                    ad.YAKIT_TURU,
+                    ad.RENK,
+                    yd.METREKARE,
+                    yd.ODA_SAYISI,
+                    yd.BINA_YASI
                 FROM IHALELER i
+                LEFT JOIN KATEGORILER k ON i.KATEGORI_ID = k.ID
+                LEFT JOIN ARAC_DETAY ad ON i.ID = ad.IHALE_ID
+                LEFT JOIN YAPI_DETAY yd ON i.ID = yd.IHALE_ID
                 WHERE LOWER(i.ID) = LOWER(:id)
             """, {"id": str(ihale_id).strip()})
 
             result = cursor.fetchone()
 
-            if result:
-                return {
-                    "ihale_id": result[0],
-                    "baslik": result[1],
-                    "aciklama": result[2],
-                    "bitis_tarihi": str(result[3]),
-                    "en_yuksek_teklif": float(result[4]) if result[4] is not None else 0.0,
-                    "katilimci_sayisi": int(result[5]) if result[5] is not None else 0
-                }
-            else:
+            if not result:
                 print(f"ID bulunamadi: {ihale_id}")
                 return None
+
+            detay = {
+                "ihale_id": result[0],
+                "baslik": result[1],
+                "aciklama": result[2],
+                "baslangic_tarihi": str(result[3]),
+                "bitis_tarihi": str(result[4]),
+                "baslangic_bedeli": float(result[5]) if result[5] else None,
+                "aktif": bool(result[6]),
+                "kategori_kod": result[7],
+                "yil": result[8],
+                "km": result[9],
+                "vites": result[10],
+                "yakit_turu": result[11],
+                "renk": result[12],
+                "metrekare": result[13],
+                "oda_sayisi": result[14],
+                "bina_yasi": result[15]
+            }
+
+           
+            cursor.execute("""
+                SELECT RESIM_ADI 
+                FROM IHALE_GORSELLERI 
+                WHERE IHALE_ID = :id
+                ORDER BY RESIM_ADI
+            """, {"id": str(ihale_id).strip()})
+
+            gorsel_rows = cursor.fetchall()
+            detay["gorseller"] = [row[0] for row in gorsel_rows] if gorsel_rows else []
+
+            return detay
+
     except Exception as e:
         print("Hata (get_ihale_detay):", e)
         return None
+
+
 
 def get_aktif_ihaleler():
     try:
@@ -457,32 +560,156 @@ def db_list_auctions_by_creator(user_id: str):
     return result
 
 def db_list_distinct_bidded_auctions(user_id: str):
-    rows = fetch_all("""
-        SELECT DISTINCT i.id, i.baslik, i.bitis_tarihi
+    cur = connection.cursor()
+    cur.execute("""
+        SELECT DISTINCT
+            i.id,
+            i.baslik,
+            i.aciklama,
+            i.baslangic_tarihi,
+            i.bitis_tarihi,
+            i.baslangic_bedeli,
+            i.olusturan_id,
+            i.aktif,
+            k.kod AS kategori_kod,
+
+            ad.yil,
+            ad.km,
+            ad.vites,
+            ad.yakit_turu,
+            ad.renk,
+
+            yd.metrekare,
+            yd.oda_sayisi,
+            yd.bina_yasi,
+
+            hd.hizmet_suresi,
+            hd.kapsam
+
         FROM teklifler t
         JOIN ihaleler i ON t.ihale_id = i.id
-        WHERE t.kullanici_id = :id
-        ORDER BY i.bitis_tarihi DESC
-    """, {"id": user_id})
-    return [{"id": r[0], "baslik": r[1], "bitis_tarihi": str(r[2])} for r in rows]
+        JOIN kategoriler k ON i.kategori_id = k.id
+        LEFT JOIN ihale_arac_detaylari ad ON i.id = ad.ihale_id
+        LEFT JOIN ihale_yapi_detaylari yd ON i.id = yd.ihale_id
+        LEFT JOIN ihale_hizmet_detaylari hd ON i.id = hd.ihale_id
+        WHERE t.kullanici_id = :user_id
+        ORDER BY i.baslangic_tarihi DESC
+    """, {"user_id": user_id})
+    
+    rows = cur.fetchall()
+    cur.close()
+
+    ihaleler = []
+    for r in rows:
+        ihaleler.append({
+            "id": r[0],
+            "baslik": r[1],
+            "aciklama": r[2],
+            "baslangic_tarihi": str(r[3]) if r[3] else None,
+            "bitis_tarihi": str(r[4]) if r[4] else None,
+            "baslangic_bedeli": r[5],
+            "olusturan_id": r[6],
+            "aktif": r[7],
+            "kategori_kod": r[8],
+
+            "yil": r[9],
+            "km": r[10],
+            "vites": r[11],
+            "yakit_turu": r[12],
+            "renk": r[13],
+
+            "metrekare": r[14],
+            "oda_sayisi": r[15],
+            "bina_yasi": r[16],
+
+            "hizmet_suresi": r[17],
+            "kapsam": r[18],
+
+            "resimler": get_ihale_resimleri(r[0])  
+        })
+    return ihaleler
+
+
+
 
 def db_list_won_auctions(user_id: str):
-    rows = fetch_all("""
-        SELECT i.id, i.baslik, i.bitis_tarihi, t.teklif_miktari
+    cur = connection.cursor()
+    cur.execute("""
+        SELECT 
+            i.id,
+            i.baslik,
+            i.aciklama,
+            i.baslangic_tarihi,
+            i.bitis_tarihi,
+            i.baslangic_bedeli,
+            i.olusturan_id,
+            i.aktif,
+            k.kod AS kategori_kod,
+
+            ad.yil,
+            ad.km,
+            ad.vites,
+            ad.yakit_turu,
+            ad.renk,
+
+            yd.metrekare,
+            yd.oda_sayisi,
+            yd.bina_yasi,
+
+            hd.hizmet_suresi,
+            hd.kapsam,
+
+            t.teklif_miktari
         FROM teklifler t
         JOIN ihaleler i ON t.ihale_id = i.id
+        JOIN kategoriler k ON i.kategori_id = k.id
+        LEFT JOIN ihale_arac_detaylari ad ON i.id = ad.ihale_id
+        LEFT JOIN ihale_yapi_detaylari yd ON i.id = yd.ihale_id
+        LEFT JOIN ihale_hizmet_detaylari hd ON i.id = hd.ihale_id
         WHERE t.kullanici_id = :id
           AND t.teklif_miktari = (
-            SELECT MAX(teklif_miktari)
-            FROM teklifler
-            WHERE ihale_id = i.id
+              SELECT MAX(teklif_miktari)
+              FROM teklifler
+              WHERE ihale_id = i.id
           )
         ORDER BY i.bitis_tarihi DESC
     """, {"id": user_id})
-    return [{
-        "id": r[0], "baslik": r[1],
-        "bitis_tarihi": str(r[2]), "teklif_miktari": r[3]
-    } for r in rows]
+
+    rows = cur.fetchall()
+    cur.close()
+
+    ihaleler = []
+    for r in rows:
+        ihaleler.append({
+            "id": r[0],
+            "baslik": r[1],
+            "aciklama": r[2],
+            "baslangic_tarihi": str(r[3]) if r[3] else None,
+            "bitis_tarihi": str(r[4]) if r[4] else None,
+            "baslangic_bedeli": r[5],
+            "olusturan_id": r[6],
+            "aktif": r[7],
+            "kategori_kod": r[8],
+
+            "yil": r[9],
+            "km": r[10],
+            "vites": r[11],
+            "yakit_turu": r[12],
+            "renk": r[13],
+
+            "metrekare": r[14],
+            "oda_sayisi": r[15],
+            "bina_yasi": r[16],
+
+            "hizmet_suresi": r[17],
+            "kapsam": r[18],
+
+            "kazanan_teklif": r[19], 
+
+            "resimler": get_ihale_resimleri(r[0])
+        })
+    return ihaleler
+
 
 def db_update_profile(user_id: str, isim: str, email: str, telefon: str):
     execute("""

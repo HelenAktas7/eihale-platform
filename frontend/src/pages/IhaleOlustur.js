@@ -7,6 +7,7 @@ function IhaleOlustur() {
     const [form, setForm] = useState({
         baslik: "",
         aciklama: "",
+        konum: "",              // ✅ eksikti, eklendi
         baslangic_tarihi: "",
         bitis_tarihi: "",
         baslangic_bedeli: "",
@@ -30,12 +31,22 @@ function IhaleOlustur() {
             .then((data) => setKategoriler(data));
     }, []);
 
+    // ✅ Eksik olan handleChange fonksiyonu eklendi
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         const formData = new FormData();
 
         formData.append("baslik", form.baslik);
         formData.append("aciklama", form.aciklama);
+        formData.append("konum", form.konum);   // ✅ burada büyük harfle "Konum" yazmışsın, küçük harf yaptım ki backend ile uyuşsun
         formData.append("kategori_id", form.kategori_id);
         formData.append("baslangic_tarihi", form.baslangic_tarihi);
         formData.append("bitis_tarihi", form.bitis_tarihi);
@@ -64,10 +75,6 @@ function IhaleOlustur() {
             formData.append("resimler", file);
         });
 
-        for (let pair of formData.entries()) {
-            console.log(pair[0], pair[1]);
-        }
-
         try {
             const res = await fetch("http://localhost:5000/ihale", {
                 method: "POST",
@@ -82,6 +89,7 @@ function IhaleOlustur() {
                 setForm({
                     baslik: "",
                     aciklama: "",
+                    konum: "",   // ✅ resetlendi
                     baslangic_tarihi: "",
                     bitis_tarihi: "",
                     baslangic_bedeli: "",
@@ -114,21 +122,33 @@ function IhaleOlustur() {
                     type="text"
                     className="form-control mb-2"
                     placeholder="Başlık"
+                    name="baslik"
                     value={form.baslik}
-                    onChange={(e) => setForm({ ...form, baslik: e.target.value })}
+                    onChange={handleChange}
                 />
 
                 <textarea
                     className="form-control mb-2"
                     placeholder="Açıklama"
+                    name="aciklama"
                     value={form.aciklama}
-                    onChange={(e) => setForm({ ...form, aciklama: e.target.value })}
+                    onChange={handleChange}
                 ></textarea>
+
+                <input
+                    type="text"
+                    name="konum"
+                    className="form-control mb-2"
+                    value={form.konum}
+                    onChange={handleChange}
+                    placeholder="Konum giriniz"
+                />
 
                 <select
                     className="form-control mb-2"
+                    name="kategori_id"
                     value={form.kategori_id}
-                    onChange={(e) => setForm({ ...form, kategori_id: e.target.value })}
+                    onChange={handleChange}
                 >
                     <option value="">Kategori Seç</option>
                     {kategoriler.map((kat) => (
@@ -140,48 +160,51 @@ function IhaleOlustur() {
 
                 {form.kategori_id === "arac" && (
                     <>
-                        <input className="form-control mb-2" placeholder="Yıl" value={form.yil} onChange={(e) => setForm({ ...form, yil: e.target.value })} />
-                        <input className="form-control mb-2" placeholder="Vites" value={form.vites} onChange={(e) => setForm({ ...form, vites: e.target.value })} />
-                        <input className="form-control mb-2" placeholder="KM" value={form.km} onChange={(e) => setForm({ ...form, km: e.target.value })} />
-                        <input className="form-control mb-2" placeholder="Yakıt Türü" value={form.yakit_turu} onChange={(e) => setForm({ ...form, yakit_turu: e.target.value })} />
-                        <input className="form-control mb-2" placeholder="Renk" value={form.renk} onChange={(e) => setForm({ ...form, renk: e.target.value })} />
+                        <input className="form-control mb-2" placeholder="Yıl" name="yil" value={form.yil} onChange={handleChange} />
+                        <input className="form-control mb-2" placeholder="Vites" name="vites" value={form.vites} onChange={handleChange} />
+                        <input className="form-control mb-2" placeholder="KM" name="km" value={form.km} onChange={handleChange} />
+                        <input className="form-control mb-2" placeholder="Yakıt Türü" name="yakit_turu" value={form.yakit_turu} onChange={handleChange} />
+                        <input className="form-control mb-2" placeholder="Renk" name="renk" value={form.renk} onChange={handleChange} />
                     </>
                 )}
 
                 {form.kategori_id === "yapi" && (
                     <>
-                        <input className="form-control mb-2" placeholder="Metrekare" value={form.metrekare} onChange={(e) => setForm({ ...form, metrekare: e.target.value })} />
-                        <input className="form-control mb-2" placeholder="Oda Sayısı" value={form.oda_sayisi} onChange={(e) => setForm({ ...form, oda_sayisi: e.target.value })} />
-                        <input className="form-control mb-2" placeholder="Bina Yaşı" value={form.bina_yasi} onChange={(e) => setForm({ ...form, bina_yasi: e.target.value })} />
+                        <input className="form-control mb-2" placeholder="Metrekare" name="metrekare" value={form.metrekare} onChange={handleChange} />
+                        <input className="form-control mb-2" placeholder="Oda Sayısı" name="oda_sayisi" value={form.oda_sayisi} onChange={handleChange} />
+                        <input className="form-control mb-2" placeholder="Bina Yaşı" name="bina_yasi" value={form.bina_yasi} onChange={handleChange} />
                     </>
                 )}
 
                 {form.kategori_id === "hizmet" && (
                     <>
-                        <input className="form-control mb-2" placeholder="Kapsam" value={form.kapsam} onChange={(e) => setForm({ ...form, kapsam: e.target.value })} />
-                        <input className="form-control mb-2" placeholder="Hizmet Süresi" value={form.hizmet_suresi} onChange={(e) => setForm({ ...form, hizmet_suresi: e.target.value })} />
+                        <input className="form-control mb-2" placeholder="Kapsam" name="kapsam" value={form.kapsam} onChange={handleChange} />
+                        <input className="form-control mb-2" placeholder="Hizmet Süresi" name="hizmet_suresi" value={form.hizmet_suresi} onChange={handleChange} />
                     </>
                 )}
 
                 <input
                     type="datetime-local"
                     className="form-control mb-2"
+                    name="baslangic_tarihi"
                     value={form.baslangic_tarihi}
-                    onChange={(e) => setForm({ ...form, baslangic_tarihi: e.target.value })}
+                    onChange={handleChange}
                 />
                 <input
                     type="datetime-local"
                     className="form-control mb-2"
+                    name="bitis_tarihi"
                     value={form.bitis_tarihi}
-                    onChange={(e) => setForm({ ...form, bitis_tarihi: e.target.value })}
+                    onChange={handleChange}
                 />
 
                 <input
                     type="number"
                     className="form-control mb-2"
                     placeholder="Başlangıç Bedeli"
+                    name="baslangic_bedeli"
                     value={form.baslangic_bedeli}
-                    onChange={(e) => setForm({ ...form, baslangic_bedeli: e.target.value })}
+                    onChange={handleChange}
                 />
 
                 <input

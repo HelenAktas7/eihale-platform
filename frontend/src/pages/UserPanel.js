@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Carousel } from "react-bootstrap";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
 function UserPanel() {
     const [aktifTab, setAktifTab] = useState("ihalelerim");
@@ -57,15 +58,49 @@ function UserPanel() {
                             )}
 
                             <div className="card-body">
+
+                                <span className={`badge ${ihale.aktif ? "bg-success" : "bg-secondary"} mb-2`}>
+                                    {ihale.aktif ? "TEKLİF VERİLEBİLİR" : "KAPANDI"}
+                                </span>
+
                                 <h5 className="card-title">{ihale.baslik}</h5>
-                                {ihale.konum && <p className="card-text">{ihale.konum}</p>}
-                                {ihale.baslangic_bedeli && (
-                                    <p className="card-text">
-                                        <strong>B. Bedeli:</strong> ₺{ihale.baslangic_bedeli}
+                                {ihale.konum && <p className="card-text text-muted">{ihale.konum}</p>}
+
+                                <p><strong>Başlangıç Bedeli:</strong> ₺{ihale.baslangic_bedeli?.toLocaleString("tr-TR")}</p>
+
+
+                                {ihale.bitis_tarihi && (
+                                    <p>
+                                        <i className="bi bi-calendar-event me-1"></i>
+                                        {new Date(ihale.bitis_tarihi).toLocaleString("tr-TR")}
                                     </p>
                                 )}
+
+                                {ihale.kategori === "arac" && (
+                                    <>
+                                        <p><strong>Yıl:</strong> {ihale.ozellikler?.yil ?? "-"}</p>
+                                        <p><strong>Km:</strong> {ihale.ozellikler?.km ?? "-"}</p>
+                                        <p><strong>Vites:</strong> {ihale.ozellikler?.vites ?? "-"}</p>
+                                    </>
+                                )}
+
+                                {ihale.kategori === "yapi" && (
+                                    <>
+                                        <p><strong>Metrekare:</strong> {ihale.ozellikler?.metrekare ?? "-"}</p>
+                                        <p><strong>Oda Sayısı:</strong> {ihale.ozellikler?.oda_sayisi ?? "-"}</p>
+                                    </>
+                                )}
+
+                                {ihale.kategori === "hizmet" && (
+                                    <>
+                                        <p><strong>Kapsam:</strong> {ihale.ozellikler?.kapsam ?? "-"}</p>
+                                        <p><strong>Süre:</strong> {ihale.ozellikler?.hizmet_suresi ?? "-"}</p>
+                                    </>
+                                )}
+
+
                                 <button
-                                    className="btn btn-primary"
+                                    className="btn btn-primary mt-2"
                                     onClick={() => navigate(`/ihale/${ihale.id}`)}
                                 >
                                     Detay
@@ -77,6 +112,7 @@ function UserPanel() {
             </div>
         );
     };
+
 
     return (
         <div className="container mt-4">

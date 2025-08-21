@@ -1,7 +1,20 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
 function AnaNavbar() {
+    let rol = null;
+
+    try {
+        const token = localStorage.getItem("token");
+        if (token) {
+            const decoded = jwtDecode(token);
+            rol = decoded.rol;
+        }
+    } catch (err) {
+        console.error("Token decode hatası:", err);
+    }
+
     return (
         <div style={{ backgroundColor: "#1b2e59", color: "white", fontFamily: "Arial, sans-serif" }}>
 
@@ -22,7 +35,6 @@ function AnaNavbar() {
             </div>
 
 
-
             <div style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -30,6 +42,7 @@ function AnaNavbar() {
                 padding: "12px 24px",
                 backgroundColor: "#23418e"
             }}>
+
                 <div
                     style={{
                         display: "flex",
@@ -51,35 +64,61 @@ function AnaNavbar() {
                     <Link className="nav-link" to="/sartlar" style={{ color: "white", fontWeight: "normal" }}>
                         ŞARTLAR
                     </Link>
+
+
+                    {rol === "admin" && (
+                        <Link className="nav-link" to="/admin" style={{ color: "yellow", fontWeight: "bold" }}>
+                            ⚙️ ADMIN PANEL
+                        </Link>
+                    )}
                 </div>
 
+
                 <div style={{ display: "flex", gap: "12px" }}>
-                    <Link to="/giris">
-                        <button style={{
-                            backgroundColor: "white",
-                            color: "#23418e",
-                            fontWeight: "bold",
-                            border: "none",
-                            padding: "8px 16px",
-                            borderRadius: "5px",
-                            cursor: "pointer"
-                        }}>
-                            ➜ GİRİŞ YAP
-                        </button>
-                    </Link>
-                    <Link to="/uyeol">
-                        <button style={{
-                            backgroundColor: "white",
-                            color: "#23418e",
-                            fontWeight: "bold",
-                            border: "none",
-                            padding: "8px 16px",
-                            borderRadius: "5px",
-                            cursor: "pointer"
-                        }}>
-                            👥 ÜYE OL
-                        </button>
-                    </Link>
+                    {!rol ? (
+                        <>
+                            <Link to="/giris">
+                                <button style={{
+                                    backgroundColor: "white",
+                                    color: "#23418e",
+                                    fontWeight: "bold",
+                                    border: "none",
+                                    padding: "8px 16px",
+                                    borderRadius: "5px",
+                                    cursor: "pointer"
+                                }}>
+                                    ➜ GİRİŞ YAP
+                                </button>
+                            </Link>
+                            <Link to="/uyeol">
+                                <button style={{
+                                    backgroundColor: "white",
+                                    color: "#23418e",
+                                    fontWeight: "bold",
+                                    border: "none",
+                                    padding: "8px 16px",
+                                    borderRadius: "5px",
+                                    cursor: "pointer"
+                                }}>
+                                    👥 ÜYE OL
+                                </button>
+                            </Link>
+                        </>
+                    ) : (
+                        <Link to="/profil">
+                            <button style={{
+                                backgroundColor: "white",
+                                color: "#23418e",
+                                fontWeight: "bold",
+                                border: "none",
+                                padding: "8px 16px",
+                                borderRadius: "5px",
+                                cursor: "pointer"
+                            }}>
+                                👤 PROFİLİM
+                            </button>
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
 import UserPanel from "./pages/UserPanel";
 import IhaleOlustur from "./pages/IhaleOlustur";
+import ProfilePage from "./pages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import IhaleDetay from "./components/IhaleDetay";
@@ -67,6 +68,7 @@ function AppContent() {
         />
         <Route path="/kullanici" element={<UserPanel />} />
         <Route path="/ihale-olustur" element={<IhaleOlustur />} />
+        <Route path="/profil" element={<ProfilePage />} />
       </Routes>
     </>
   );
