@@ -857,6 +857,53 @@ def kategoriler():
 def kategori_alanlar(kod):
     return jsonify(FIELD_SPECS.get(kod, []))
 
+@app.route("/uyeol", methods=["POST"])
+def uye_ol():
+    try:
+        data = request.get_json()
+        isim = (data.get("isim") or "").strip()
+        soyad = (data.get("soyad") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        telefon = (data.get("telefon") or "").strip()
+        sifre = data.get("sifre") or ""
+
+        if not isim or not soyad or not email or not sifre:
+            return jsonify({"hata": "Zorunlu alanlar eksik."}), 400
+
+        cur = connection.cursor()
+
+        cur.execute("SELECT 1 FROM KULLANICILAR WHERE EMAIL = :e", {"e": email})
+        if cur.fetchone():
+            return jsonify({"hata": "Bu e-posta ile kayıt zaten var."}), 409
+
+        hashed = bcrypt.hashpw(sifre.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+        import uuid
+        uid = str(uuid.uuid4())
+
+        cur.execute("""
+            INSERT INTO KULLANICILAR (ID, ISIM, SOYAD, EMAIL, TELEFON, SIFRE_HASH, ROL, AKTIF)
+            VALUES (:id, :ISIM, :soyad, :email, :telefon, :sifre, :rol, :aktif)
+        """, {
+            "id": uid,
+            "isim": isim,
+            "soyad": soyad,
+            "email": email,
+            "telefon": telefon,
+            "sifre": hashed,
+            "rol": "kullanici",
+            "aktif": 1
+        })
+        connection.commit()
+        return jsonify({"mesaj": "Kayıt başarılı"}), 201
+
+
+    except Exception as e:
+        connection.rollback()
+        print("Üye ol hatası:", e)
+        return jsonify({"hata": "Sunucu hatası"}), 500
+
+
 if __name__ == '__main__':
           app.run(debug=True)
 

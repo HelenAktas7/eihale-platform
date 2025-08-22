@@ -5,6 +5,7 @@ import AdminPanel from "./pages/AdminPanel";
 import UserPanel from "./pages/UserPanel";
 import IhaleOlustur from "./pages/IhaleOlustur";
 import ProfilePage from "./pages/ProfilePage";
+import UyeOl from "./pages/UyeOl";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import IhaleDetay from "./components/IhaleDetay";
@@ -18,17 +19,22 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 function AppContent() {
   const [aramaMetni, setAramaMetni] = useState("");
   const location = useLocation();
-  const isHome = location.pathname === "/";
+
+  const hideNavbar =
+    location.pathname === "/" ||
+    location.pathname.startsWith("/giris") ||
+    location.pathname === "/uyeol";
 
   return (
     <>
-      {!isHome && <Navbar aramaMetni={aramaMetni} setAramaMetni={setAramaMetni} />}
+      {!hideNavbar && (
+        <Navbar aramaMetni={aramaMetni} setAramaMetni={setAramaMetni} />
+      )}
 
       <Routes>
-        <Route path="/" element={
-          <Home />
-        } />
+        <Route path="/" element={<Home />} />
         <Route path="/giris" element={<Login />} />
+        <Route path="/uyeol" element={<UyeOl />} />
 
         <Route
           path="/admin"
@@ -48,7 +54,6 @@ function AppContent() {
           }
         />
 
-
         <Route
           path="/arsiv"
           element={
@@ -58,7 +63,6 @@ function AppContent() {
           }
         />
 
-
         <Route path="/ihale/:id" element={<IhaleDetay />} />
         <Route path="/admin/ihale/:ihale_id/kazanan" element={<KazananTeklif />} />
         <Route path="/admin/ihale/:id" element={<AdminIhaleDetay />} />
@@ -66,20 +70,20 @@ function AppContent() {
           path="/admin/kullanici/:kullaniciId/teklifler"
           element={<AdminKullaniciTeklifler />}
         />
-        <Route path="/kullanici" element={<UserPanel />} />
+
         <Route path="/ihale-olustur" element={<IhaleOlustur />} />
         <Route path="/profil" element={<ProfilePage />} />
       </Routes>
     </>
   );
 }
+
 function App() {
   return (
     <Router>
       <AppContent />
     </Router>
-
-  )
+  );
 }
 
 export default App;
