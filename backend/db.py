@@ -265,9 +265,6 @@ def get_all_ihaleler(filters=None):
     return ihaleler
 
 
-
-
-
 def get_kazananlar():
     try:
         cursor = connection.cursor()
@@ -303,7 +300,6 @@ def get_db_connection():
         password="34281",
         dsn="localhost:1521/XEPDB1"
     )
-
 def get_ihale_by_id(ihale_id):
     cursor = connection.cursor()
     cursor.execute("""
@@ -316,7 +312,8 @@ def get_ihale_by_id(ihale_id):
             i.baslangic_bedeli,
             i.olusturan_id,
             i.konum,
-            k.kod AS kategori_kod
+            k.kod AS kategori_kod,
+            i.aktif
         FROM ihaleler i
         JOIN kategoriler k ON i.kategori_id = k.id
         WHERE i.id = :id
@@ -326,6 +323,7 @@ def get_ihale_by_id(ihale_id):
     if not ihale:
         return None
 
+
     cursor.execute("""
         SELECT yil, km, vites, yakit_turu, renk
         FROM ihale_arac_detaylari
@@ -333,13 +331,15 @@ def get_ihale_by_id(ihale_id):
     """, {"id": ihale_id})
     arac_detay = cursor.fetchone()
 
+  
     cursor.execute("""
         SELECT metrekare, oda_sayisi, bina_yasi
         FROM ihale_yapi_detaylari
         WHERE ihale_id = :id
     """, {"id": ihale_id})
     yapi_detay = cursor.fetchone()
-  
+
+
     cursor.execute("""
         SELECT hizmet_suresi, kapsam, calisma_saatleri
         FROM ihale_hizmet_detaylari
@@ -358,30 +358,32 @@ def get_ihale_by_id(ihale_id):
         "id": ihale[0],
         "baslik": ihale[1],
         "aciklama": ihale[2],
-        "baslangic_tarihi": str(ihale[3]),
-        "bitis_tarihi": str(ihale[4]),
+        "baslangic_tarihi": ihale[3].strftime("%Y-%m-%dT%H:%M:%S") if ihale[3] else None,
+        "bitis_tarihi": ihale[4].strftime("%Y-%m-%dT%H:%M:%S") if ihale[4] else None,
         "baslangic_bedeli": ihale[5],
         "olusturan_id": ihale[6],
-        "konum":ihale[7],
+        "konum": ihale[7],
         "kategori": ihale[8],
+        "aktif": ihale[9],
         "ozellikler": {
-          
             "yil": arac_detay[0] if arac_detay else None,
             "km": arac_detay[1] if arac_detay else None,
             "vites": arac_detay[2] if arac_detay else None,
             "yakit_turu": arac_detay[3] if arac_detay else None,
             "renk": arac_detay[4] if arac_detay else None,
-          
+
             "metrekare": yapi_detay[0] if yapi_detay else None,
             "oda_sayisi": yapi_detay[1] if yapi_detay else None,
             "bina_yasi": yapi_detay[2] if yapi_detay else None,
-         
+
             "hizmet_suresi": hizmet_detay[0] if hizmet_detay else None,
             "kapsam": hizmet_detay[1] if hizmet_detay else None,
             "calisma_saatleri": hizmet_detay[2] if hizmet_detay else None
         },
         "resimler": resimler
     }
+
+
 
 
 def get_ihaleler_by_kullanici_id(kullanici_id):
@@ -674,26 +676,60 @@ def db_get_user_by_id(user_id: str):
 
 def db_list_auctions_by_creator(user_id: str):
     rows = fetch_all("""
-        SELECT i.id, i.baslik, i.bitis_tarihi, i.aktif,
+        SELECT i.id, i.baslik, i.aciklama, i.baslangic_tarihi, i.bitis_tarihi,
+               i.baslangic_bedeli, i.olusturan_id, i.aktif, i.konum,
+               k.kod AS kategori_kod,
+
+               ad.yil, ad.km, ad.vites, ad.yakit_turu, ad.renk,
+               yd.metrekare, yd.oda_sayisi, yd.bina_yasi,
+               hd.hizmet_suresi, hd.kapsam,
+
                COALESCE(LISTAGG(g.resim_adi, ',') WITHIN GROUP (ORDER BY g.resim_adi), '') as resimler
         FROM ihaleler i
+        JOIN kategoriler k ON i.kategori_id = k.id
+        LEFT JOIN ihale_arac_detaylari ad ON i.id = ad.ihale_id
+        LEFT JOIN ihale_yapi_detaylari yd ON i.id = yd.ihale_id
+        LEFT JOIN ihale_hizmet_detaylari hd ON i.id = hd.ihale_id
         LEFT JOIN ihale_gorselleri g ON i.id = g.ihale_id
         WHERE i.olusturan_id = :id
-        GROUP BY i.id, i.baslik, i.bitis_tarihi, i.aktif
+        GROUP BY i.id, i.baslik, i.aciklama, i.baslangic_tarihi, i.bitis_tarihi,
+                 i.baslangic_bedeli, i.olusturan_id, i.aktif, i.konum, k.kod,
+                 ad.yil, ad.km, ad.vites, ad.yakit_turu, ad.renk,
+                 yd.metrekare, yd.oda_sayisi, yd.bina_yasi,
+                 hd.hizmet_suresi, hd.kapsam
         ORDER BY i.bitis_tarihi DESC
     """, {"id": user_id})
 
     result = []
     for r in rows:
-        resimler = r[4].split(",") if r[4] else []
+        resimler = r[19].split(",") if r[19] else []
         result.append({
             "id": r[0],
             "baslik": r[1],
-            "bitis_tarihi": str(r[2]),
-            "aktif": r[3],
-            "resimler": resimler
+            "aciklama": r[2],
+            "baslangic_tarihi": str(r[3]) if r[3] else None,
+            "bitis_tarihi": str(r[4]) if r[4] else None,
+            "baslangic_bedeli": r[5],
+            "olusturan_id": r[6],
+            "aktif": r[7],
+            "konum": r[8],
+            "kategori": r[9],
+            "ozellikler": {
+                "yil": r[10],
+                "km": r[11],
+                "vites": r[12],
+                "yakit_turu": r[13],
+                "renk": r[14],
+                "metrekare": r[15],
+                "oda_sayisi": r[16],
+                "bina_yasi": r[17],
+                "hizmet_suresi": r[18],
+                "kapsam": r[19] if len(r) > 19 else None
+            },
+             "resimler": get_ihale_resimleri(r[0])  
         })
     return result
+
 
 def db_list_distinct_bidded_auctions(user_id: str):
     cur = connection.cursor()
@@ -720,7 +756,9 @@ def db_list_distinct_bidded_auctions(user_id: str):
             yd.bina_yasi,
 
             hd.hizmet_suresi,
-            hd.kapsam
+            hd.kapsam,
+
+            t.id AS teklif_id  
 
         FROM teklifler t
         JOIN ihaleler i ON t.ihale_id = i.id
@@ -761,7 +799,9 @@ def db_list_distinct_bidded_auctions(user_id: str):
             "hizmet_suresi": r[17],
             "kapsam": r[18],
 
-            "resimler": get_ihale_resimleri(r[0])  
+            "resimler": get_ihale_resimleri(r[0]),
+
+            "teklif_id": r[19]   
         })
     return ihaleler
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AnaNavbar from "../components/AnaNavbar";
+import Carousel from "react-bootstrap/Carousel";
 
 function Home() {
     const [ihaleler, setIhaleler] = useState([]);
@@ -22,7 +23,7 @@ function Home() {
             const query = new URLSearchParams(filters).toString();
             const res = await fetch(`http://localhost:5000/ihaleler?${query}`);
             const data = await res.json();
-            setIhaleler(data);
+            setIhaleler(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error("Fetch hatası:", err);
         }
@@ -57,6 +58,7 @@ function Home() {
         <>
             <AnaNavbar />
             <div style={kapsayiciKart}>
+
                 <div style={inputGrup}>
                     <input
                         name="ad"
@@ -80,6 +82,7 @@ function Home() {
                         style={inputStyle}
                     />
                 </div>
+
                 {gelismisGoster && (
                     <div style={gelismisAlan}>
                         <input
@@ -108,6 +111,7 @@ function Home() {
                         </div>
                     </div>
                 )}
+
                 <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
                     <button style={temizleButon} onClick={handleClear}>TEMİZLE</button>
                     <button style={araButon} onClick={handleSearch}>ARA</button>
@@ -158,9 +162,11 @@ function Home() {
                         borderRadius: "8px",
                         overflow: "hidden",
                         cursor: "pointer",
-                        transition: "transform 0.3s ease, box-shadow 0.3s ease"
+                        transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                        maxWidth: "350px",
+                        margin: "0"
                     }}
-                        onClick={() => navigate(`/ihale/${ihale.id}`)}
+
                         onMouseEnter={(e) => {
                             e.currentTarget.style.transform = "scale(1.03)";
                             e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.2)";
@@ -168,19 +174,48 @@ function Home() {
                         onMouseLeave={(e) => {
                             e.currentTarget.style.transform = "scale(1)";
                             e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
-                        }}>
+                        }}
+                    >
 
-                        <img
-                            src={
-                                ihale.resimler && ihale.resimler.length > 0
-                                    ? `http://localhost:5000/uploads/${ihale.resimler[0]}`
-                                    : "https://via.placeholder.com/400x200?text=Görsel+Yok"
-                            }
-                            alt={ihale.baslik}
-                            style={{ width: "100%", height: "200px", objectFit: "cover" }}
-                        />
+                        <Carousel interval={null}>
+                            {ihale.resimler && ihale.resimler.length > 0 ? (
+                                ihale.resimler.map((resim, index) => (
+                                    <Carousel.Item key={index}>
+                                        <img
+                                            src={`http://localhost:5000/uploads/${resim}`}
+                                            alt={`ihale-${index}`}
+                                            style={{ width: "100%", height: "220px", objectFit: "cover", borderBottom: "1px solid #eee" }}
+                                        />
+                                    </Carousel.Item>
+                                ))
+                            ) : (
+                                <Carousel.Item>
+                                    <img
+                                        src="https://via.placeholder.com/400x200?text=Görsel+Yok"
+                                        alt="placeholder"
+                                        style={{ width: "100%", height: "220px", objectFit: "cover" }}
+                                    />
+                                </Carousel.Item>
+                            )}
+                        </Carousel>
 
                         <div style={{ padding: "1rem" }}>
+                            <button
+                                onClick={() => navigate(`/ihale/${ihale.id}`)}
+                                style={{
+                                    marginTop: "1rem",
+                                    background: "#15428b",
+                                    color: "#fff",
+                                    padding: "0.5rem 1rem",
+                                    border: "none",
+                                    borderRadius: "5px",
+                                    float: "right",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                DETAY
+                            </button>
+
                             {ihale.aktif === 1 && (
                                 <div style={{ background: "green", color: "#fff", padding: "0.2rem 0.5rem", borderRadius: "4px", fontSize: "0.8rem", display: "inline-block", marginBottom: "0.5rem" }}>
                                     TEKLİF VERİLEBİLİR
@@ -188,10 +223,10 @@ function Home() {
                             )}
                             <h3>{ihale.baslik}</h3>
                             <p style={{ fontStyle: "italic" }}>{ihale.konum}</p>
-                            <p><strong>Başlangıç Bedeli:</strong> ₺{ihale.baslangic_bedeli}</p>
+                            <p> <strong>Başlangıç Bedeli:</strong>{" "}
+                                ₺{Number(ihale.baslangic_bedeli || 0).toLocaleString("tr-TR")}</p>
                             <p>{ihale.teklifVarMi ? "Teklif Mevcut" : "Teklif Mevcut Değil"}</p>
                             <p>🗓 {new Date(ihale.bitis_tarihi).toLocaleString()}</p>
-
                             {ihale.kategori_kod === "arac" && (
                                 <>
                                     <p><strong>Yıl:</strong> {ihale.yil}</p>
@@ -215,21 +250,7 @@ function Home() {
                                 </>
                             )}
 
-                            <button
-                                onClick={() => navigate(`/ihale/${ihale.id}`)}
-                                style={{
-                                    marginTop: "1rem",
-                                    background: "#15428b",
-                                    color: "#fff",
-                                    padding: "0.5rem 1rem",
-                                    border: "none",
-                                    borderRadius: "5px",
-                                    float: "right",
-                                    cursor: "pointer"
-                                }}
-                            >
-                                DETAY
-                            </button>
+
                         </div>
                     </div>
                 ))}
@@ -238,53 +259,11 @@ function Home() {
     );
 }
 
-const kapsayiciKart = {
-    background: "#fff",
-    padding: "2rem",
-    borderRadius: "10px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-    margin: "2rem auto",
-    maxWidth: "90%"
-};
-
-const inputGrup = {
-    display: "flex",
-    gap: "1rem",
-    flexWrap: "wrap"
-};
-
-const gelismisAlan = {
-    marginTop: "1rem",
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "1rem"
-};
-
-const inputStyle = {
-    padding: "0.5rem",
-    border: "1px solid #ccc",
-    borderRadius: "4px",
-    minWidth: "200px"
-};
-
-const temizleButon = {
-    background: "#ffc107",
-    border: "none",
-    padding: "0.7rem 2rem",
-    borderRadius: "5px",
-    fontWeight: "bold",
-    color: "#000",
-    cursor: "pointer"
-};
-
-const araButon = {
-    background: "#15428b",
-    border: "none",
-    padding: "0.7rem 2rem",
-    borderRadius: "5px",
-    fontWeight: "bold",
-    color: "#fff",
-    cursor: "pointer"
-};
+const kapsayiciKart = { background: "#fff", padding: "2rem", borderRadius: "10px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", margin: "2rem auto", maxWidth: "90%" };
+const inputGrup = { display: "flex", gap: "1rem", flexWrap: "wrap" };
+const gelismisAlan = { marginTop: "1rem", display: "flex", flexWrap: "wrap", gap: "1rem" };
+const inputStyle = { padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px", minWidth: "200px" };
+const temizleButon = { background: "#ffc107", border: "none", padding: "0.7rem 2rem", borderRadius: "5px", fontWeight: "bold", color: "#000", cursor: "pointer" };
+const araButon = { background: "#15428b", border: "none", padding: "0.7rem 2rem", borderRadius: "5px", fontWeight: "bold", color: "#fff", cursor: "pointer" };
 
 export default Home;

@@ -220,28 +220,39 @@ function IhaleDetay() {
                                 </ul>
                             </div>
 
-                            {kullaniciId && ihale.olusturan_id !== kullaniciId ? (
-                                <div className="card p-3 mb-4">
-                                    <h5>Yeni Teklif Ver</h5>
-                                    <form onSubmit={handleTeklifGonder} className="d-flex gap-2">
-                                        <input
-                                            type="number"
-                                            className="form-control"
-                                            placeholder="Teklif Tutarı (₺)"
-                                            value={teklifTutari}
-                                            onChange={(e) => setTeklifTutari(e.target.value)}
-                                            required
-                                        />
-                                        <button type="submit" className="btn btn-primary">
-                                            Teklif Ver
-                                        </button>
-                                    </form>
-                                </div>
-                            ) : (
-                                <p className="text-danger">
-                                    Bu ihaleyi sen oluşturdun, teklif veremezsin!
-                                </p>
-                            )}
+                            {ihale ? (
+                                ihale.olusturan_id === kullaniciId ? (
+                                    <p className="text-danger">
+                                        Bu ihaleyi sen oluşturdun, teklif veremezsin!
+                                    </p>
+                                ) : (
+                                    (String(ihale.aktif) === "1" || ihale.aktif === 1 || ihale.aktif === true) &&
+                                        new Date(ihale.bitis_tarihi) > new Date() ? (
+                                        <div className="card p-3 mb-4">
+                                            <h5>Yeni Teklif Ver</h5>
+                                            <form onSubmit={handleTeklifGonder} className="d-flex gap-2">
+                                                <input
+                                                    type="number"
+                                                    className="form-control"
+                                                    placeholder="Teklif Tutarı (₺)"
+                                                    value={teklifTutari}
+                                                    onChange={(e) => setTeklifTutari(e.target.value)}
+                                                    required
+                                                />
+                                                <button type="submit" className="btn btn-primary">
+                                                    Teklif Ver
+                                                </button>
+                                            </form>
+                                        </div>
+                                    ) : (
+                                        <p className="text-danger fw-bold">
+                                            Bu ihaleye artık teklif verilemez. (Kapanmış)
+                                        </p>
+                                    )
+                                )
+                            ) : null}
+
+
                         </div>
 
 

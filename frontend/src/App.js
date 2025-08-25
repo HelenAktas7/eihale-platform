@@ -31,7 +31,9 @@ function AppContent() {
     location.pathname === "/uyeol" ||
     location.pathname === "/sss" ||
     location.pathname === "/genelsartlar" ||
-    location.pathname === "/kullanicisozlesmesi";
+    location.pathname === "/kullanicisozlesmesi" ||
+    location.pathname === "/ihaleler/guncel" ||
+    location.pathname === "/ihaleler/sonuclanan";
 
   return (
     <>

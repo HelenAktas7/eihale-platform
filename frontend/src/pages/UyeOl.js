@@ -205,7 +205,10 @@ export default function UyeOl() {
                                 Üye olan kullanıcılar üyelik koşullarını kabul etmiş sayılmaktadır.
                             </p>
                             <p style={{ textAlign: "center" }}>
-                                <span style={st.link} role="button">Üyelik Koşulları</span>
+                                <span style={st.link}
+                                    role="button"
+                                    onClick={() => navigate("/kullanicisozlesmesi")}
+                                >Üyelik Koşulları</span>
                             </p>
                         </div>
                     </div>

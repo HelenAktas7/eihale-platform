@@ -7,7 +7,7 @@ function IhaleOlustur() {
     const [form, setForm] = useState({
         baslik: "",
         aciklama: "",
-        konum: "",              // ✅ eksikti, eklendi
+        konum: "",
         baslangic_tarihi: "",
         bitis_tarihi: "",
         baslangic_bedeli: "",
@@ -31,7 +31,7 @@ function IhaleOlustur() {
             .then((data) => setKategoriler(data));
     }, []);
 
-    // ✅ Eksik olan handleChange fonksiyonu eklendi
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setForm((prev) => ({
@@ -46,7 +46,7 @@ function IhaleOlustur() {
 
         formData.append("baslik", form.baslik);
         formData.append("aciklama", form.aciklama);
-        formData.append("konum", form.konum);   // ✅ burada büyük harfle "Konum" yazmışsın, küçük harf yaptım ki backend ile uyuşsun
+        formData.append("konum", form.konum);
         formData.append("kategori_id", form.kategori_id);
         formData.append("baslangic_tarihi", form.baslangic_tarihi);
         formData.append("bitis_tarihi", form.bitis_tarihi);
@@ -89,7 +89,7 @@ function IhaleOlustur() {
                 setForm({
                     baslik: "",
                     aciklama: "",
-                    konum: "",   // ✅ resetlendi
+                    konum: "",
                     baslangic_tarihi: "",
                     bitis_tarihi: "",
                     baslangic_bedeli: "",

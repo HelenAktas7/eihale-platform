@@ -145,26 +145,23 @@ def ihale_olustur():
         print("Kategori kod:", request.form.get("kategori_id"))
 
         kullanici_id = request.decoded_token.get("id")
-
         baslik = request.form.get("baslik")
         aciklama = request.form.get("aciklama")
         konum = request.form.get("konum")
         kategori_kod = request.form.get("kategori_id")
-
-        baslangic_tarihi = request.form.get("baslangic_tarihi")
+        baslangic_bedeli = request.form.get("baslangic_bedeli")  
+        baslangic_tarihi = request.form.get("baslangic_tarihi")  
         bitis_tarihi = request.form.get("bitis_tarihi")
+  
+        if baslangic_bedeli:
+            baslangic_bedeli = int(baslangic_bedeli.replace(".", "").replace(",", ""))
+        else:
+            baslangic_bedeli = 0
 
         if baslangic_tarihi:
             baslangic_tarihi = datetime.fromisoformat(baslangic_tarihi)
         if bitis_tarihi:
             bitis_tarihi = datetime.fromisoformat(bitis_tarihi)
-
-        baslangic_bedeli = request.form.get("baslangic_bedeli")
-        try:
-            baslangic_bedeli = int(baslangic_bedeli) if baslangic_bedeli else None
-        except ValueError:
-            baslangic_bedeli = None
-
         cur = connection.cursor()
         cur.execute("SELECT id FROM kategoriler WHERE kod = :kod", {"kod": kategori_kod})
         kategori_id_row = cur.fetchone()
@@ -581,6 +578,18 @@ def teklif_guncelle(teklif_id):
     except Exception as e :
      return jsonify({"hata":str(e)}),500
     
+@app.route("/teklif/<teklif_id>", methods=["DELETE"])
+@token_gerektiriyor
+def teklif_sil(teklif_id):
+    try:
+        cur = connection.cursor()
+        cur.execute("DELETE FROM teklifler WHERE id = :id", {"id": teklif_id})
+        connection.commit()
+        return jsonify({"message": "Teklif başarıyla iptal edildi."}), 200
+    except Exception as e:
+        print("Teklif silme hatası:", e)
+        return jsonify({"error": "Teklif iptal edilemedi"}), 500
+
 
 @app.route("/ihale/<ihale_id>/kazanan", methods=["GET"])
 @token_gerektiriyor
