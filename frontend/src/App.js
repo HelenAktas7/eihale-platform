@@ -6,6 +6,11 @@ import UserPanel from "./pages/UserPanel";
 import IhaleOlustur from "./pages/IhaleOlustur";
 import ProfilePage from "./pages/ProfilePage";
 import UyeOl from "./pages/UyeOl";
+import FaqPage from "./pages/FaqPage";
+import KullaniciSozlesmesi from "./pages/KullaniciSozlesmesi";
+import GenelSartlar from "./pages/GenelSartlar";
+import GuncelIhaleler from "./pages/GuncelIhaleler";
+import SonuclananIhaleler from "./pages/SonuclananIhaleler";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import IhaleDetay from "./components/IhaleDetay";
@@ -23,7 +28,10 @@ function AppContent() {
   const hideNavbar =
     location.pathname === "/" ||
     location.pathname.startsWith("/giris") ||
-    location.pathname === "/uyeol";
+    location.pathname === "/uyeol" ||
+    location.pathname === "/sss" ||
+    location.pathname === "/genelsartlar" ||
+    location.pathname === "/kullanicisozlesmesi";
 
   return (
     <>
@@ -70,7 +78,11 @@ function AppContent() {
           path="/admin/kullanici/:kullaniciId/teklifler"
           element={<AdminKullaniciTeklifler />}
         />
-
+        <Route path="/sss" element={<FaqPage />} />
+        <Route path="/genelsartlar" element={<GenelSartlar />} />
+        <Route path="kullanicisozlesmesi" element={<KullaniciSozlesmesi />} />
+        <Route path="/ihaleler/guncel" element={<GuncelIhaleler />} />
+        <Route path="/ihaleler/sonuclanan" element={<SonuclananIhaleler />} />
         <Route path="/ihale-olustur" element={<IhaleOlustur />} />
         <Route path="/profil" element={<ProfilePage />} />
       </Routes>

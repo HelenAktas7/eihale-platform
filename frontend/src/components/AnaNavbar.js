@@ -55,15 +55,38 @@ function AnaNavbar() {
                     <Link className="nav-link" to="/" style={{ color: "white", fontWeight: "normal" }}>
                         ANASAYFA
                     </Link>
-                    <Link className="nav-link" to="/ihaleler" style={{ color: "white", fontWeight: "normal" }}>
-                        İHALELER
-                    </Link>
-                    <Link className="nav-link" to="/yardim" style={{ color: "white", fontWeight: "normal" }}>
+
+                    <li className="nav-item dropdown" style={{ listStyleType: "none" }}>
+                        <a className="nav-link dropdown-toggle" href="#" id="ihalelerDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            İHALELER
+                        </a>
+                        <ul className="dropdown-menu" aria-labelledby="ihalelerDropdown">
+                            <li>
+                                <Link className="dropdown-item" to="/ihaleler/guncel">GÜNCEL İHALELER</Link>
+                            </li>
+                            <li>
+                                <Link className="dropdown-item" to="/ihaleler/sonuclanan">SONUÇLANAN İHALELER</Link>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <Link className="nav-link" to="/sss" style={{ color: "white", fontWeight: "normal" }}>
                         YARDIM
                     </Link>
-                    <Link className="nav-link" to="/sartlar" style={{ color: "white", fontWeight: "normal" }}>
-                        ŞARTLAR
-                    </Link>
+
+                    <li className="nav-item dropdown" style={{ listStyleType: "none" }}>
+                        <a className="nav-link dropdown-toggle" href="#" id="ihalelerDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            ŞARTLAR
+                        </a>
+                        <ul className="dropdown-menu" aria-labelledby="ihalelerDropdown">
+                            <li>
+                                <Link className="dropdown-item" to="/genelsartlar">GENEL ŞARTLAR</Link>
+                            </li>
+                            <li>
+                                <Link className="dropdown-item" to="/kullanicisozlesmesi">ÜYELİK ŞARTLARI</Link>
+                            </li>
+                        </ul>
+                    </li>
 
 
                     {rol === "admin" && (
@@ -124,5 +147,6 @@ function AnaNavbar() {
         </div>
     );
 }
+
 
 export default AnaNavbar;

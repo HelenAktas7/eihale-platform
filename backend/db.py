@@ -171,9 +171,8 @@ def get_all_kullanicilar():
     except Exception as e:
         print("Hata:", e)
         return []
-def get_all_ihaleler():
-    cur = connection.cursor()
-    cur.execute("""
+def get_all_ihaleler(filters=None):
+    query = """
         SELECT 
             i.id,
             i.baslik,
@@ -184,27 +183,58 @@ def get_all_ihaleler():
             i.olusturan_id,
             i.aktif,
             k.kod AS kategori_kod,
-
             ad.yil,
             ad.km,
             ad.vites,
             ad.yakit_turu,
             ad.renk,
-
             yd.metrekare,
             yd.oda_sayisi,
             yd.bina_yasi,
-
             hd.hizmet_suresi,
             hd.kapsam
-
         FROM ihaleler i
         JOIN kategoriler k ON i.kategori_id = k.id
         LEFT JOIN ihale_arac_detaylari ad ON i.id = ad.ihale_id
         LEFT JOIN ihale_yapi_detaylari yd ON i.id = yd.ihale_id
         LEFT JOIN ihale_hizmet_detaylari hd ON i.id = hd.ihale_id
-        ORDER BY i.baslangic_tarihi DESC
-    """)
+        WHERE 1=1
+    """
+    params = {}
+
+    if filters:
+        if "ad" in filters and filters["ad"]:
+            query += " AND LOWER(i.baslik) LIKE :ad"
+            params["ad"] = f"%{filters['ad'].lower()}%"
+
+        if "numara" in filters and filters["numara"]:
+            query += " AND CAST(i.id AS VARCHAR(50)) LIKE :numara"
+            params["numara"] = f"%{filters['numara']}%"
+
+        if "icerik" in filters and filters["icerik"]:
+            query += " AND LOWER(i.aciklama) LIKE :icerik"
+            params["icerik"] = f"%{filters['icerik'].lower()}%"
+
+        if "yer" in filters and filters["yer"]:
+            query += " AND LOWER(i.konum) LIKE :yer"
+            params["yer"] = f"%{filters['yer'].lower()}%"
+
+        if "minFiyat" in filters and filters["minFiyat"]:
+            query += " AND i.baslangic_bedeli >= :minFiyat"
+            params["minFiyat"] = filters["minFiyat"]
+
+        if "maxFiyat" in filters and filters["maxFiyat"]:
+            query += " AND i.baslangic_bedeli <= :maxFiyat"
+            params["maxFiyat"] = filters["maxFiyat"]
+
+        if "kategori" in filters and filters["kategori"]:
+            query += " AND k.kod = :kategori"
+            params["kategori"] = filters["kategori"]
+
+    query += " ORDER BY i.baslangic_tarihi DESC"
+
+    cur = connection.cursor()
+    cur.execute(query, params)
     rows = cur.fetchall()
     cur.close()
 
@@ -216,7 +246,7 @@ def get_all_ihaleler():
             "aciklama": r[2],
             "baslangic_tarihi": str(r[3]) if r[3] else None,
             "bitis_tarihi": str(r[4]) if r[4] else None,
-            "baslangic_bedeli":r[5],
+            "baslangic_bedeli": r[5],
             "olusturan_id": r[6],
             "aktif": r[7],
             "kategori_kod": r[8],
@@ -224,7 +254,7 @@ def get_all_ihaleler():
             "km": r[10],
             "vites": r[11],
             "yakit_turu": r[12],
-            "renk":r[13],
+            "renk": r[13],
             "metrekare": r[14],
             "oda_sayisi": r[15],
             "bina_yasi": r[16],
@@ -233,6 +263,7 @@ def get_all_ihaleler():
             "resimler": get_ihale_resimleri(r[0])  
         })
     return ihaleler
+
 
 
 
@@ -454,19 +485,124 @@ def get_ihale_detay(ihale_id):
 
 
 
-def get_aktif_ihaleler():
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT ID, BASLIK, ACIKLAMA, BITIS_TARIHI
-                FROM IHALELER
-                WHERE BITIS_TARIHI > SYSDATE
-                ORDER BY BITIS_TARIHI ASC
-            """)
-            return cursor.fetchall()
-    except Exception as e:
-        print("Hata (get_aktif_ihaleler):", e)
-        return []
+
+def get_aktif_ihaleler(filters=None):
+    query = """
+        SELECT i.id,
+               i.baslik,
+               i.aciklama,
+               i.konum,
+               i.baslangic_bedeli,
+               i.bitis_tarihi,
+               k.kod AS kategori_kod,
+               ia.yil, ia.km, ia.vites, ia.yakit_turu,
+               iy.metrekare, iy.oda_sayisi, iy.bina_yasi,
+               ih.hizmet_suresi, ih.kapsam,
+               LISTAGG(g.resim_adi, ',') WITHIN GROUP (ORDER BY g.resim_adi) AS resimler
+        FROM ihaleler i
+        JOIN kategoriler k ON i.kategori_id = k.id
+        LEFT JOIN ihale_arac_detaylari ia ON i.id = ia.ihale_id
+        LEFT JOIN ihale_yapi_detaylari iy ON i.id = iy.ihale_id
+        LEFT JOIN ihale_hizmet_detaylari ih ON i.id = ih.ihale_id
+        LEFT JOIN ihale_gorselleri g ON i.id = g.ihale_id
+        WHERE i.aktif = 1
+    """
+    params = {}
+
+  
+    if filters:
+        if filters.get("ad"):
+            query += " AND LOWER(i.baslik) LIKE :ad"
+            params["ad"] = f"%{filters['ad'].lower()}%"
+        if filters.get("numara"):
+            query += " AND i.id LIKE :numara"
+            params["numara"] = f"%{filters['numara']}%"
+        if filters.get("icerik"):
+            query += " AND LOWER(i.aciklama) LIKE :icerik"
+            params["icerik"] = f"%{filters['icerik'].lower()}%"
+        if filters.get("yer"):
+            query += " AND LOWER(i.konum) LIKE :yer"
+            params["yer"] = f"%{filters['yer'].lower()}%"
+        if filters.get("minFiyat"):
+            query += " AND i.baslangic_bedeli >= :minFiyat"
+            params["minFiyat"] = filters["minFiyat"]
+        if filters.get("maxFiyat"):
+            query += " AND i.baslangic_bedeli <= :maxFiyat"
+            params["maxFiyat"] = filters["maxFiyat"]
+        if filters.get("kategori"):
+            query += " AND k.kod = :kategori"
+            params["kategori"] = filters["kategori"]
+
+    query += """
+        GROUP BY i.id, i.baslik, i.aciklama, i.konum, i.baslangic_bedeli, 
+                 i.bitis_tarihi, k.kod, ia.yil, ia.km, ia.vites, ia.yakit_turu,
+                 iy.metrekare, iy.oda_sayisi, iy.bina_yasi, ih.hizmet_suresi, ih.kapsam
+    """
+
+    cur = connection.cursor()
+    cur.execute(query, params)
+    rows = cur.fetchall()
+    cur.close()
+    return rows
+
+
+def get_sonuc_ihaleler(filters=None):
+    query = """
+        SELECT i.id,
+               i.baslik,
+               i.aciklama,
+               i.konum,
+               i.baslangic_bedeli,
+               i.bitis_tarihi,
+               k.kod AS kategori_kod,
+               ia.yil, ia.km, ia.vites, ia.yakit_turu,
+               iy.metrekare, iy.oda_sayisi, iy.bina_yasi,
+               ih.hizmet_suresi, ih.kapsam,
+               LISTAGG(g.resim_adi, ',') WITHIN GROUP (ORDER BY g.resim_adi) AS resimler
+        FROM ihaleler i
+        JOIN kategoriler k ON i.kategori_id = k.id
+        LEFT JOIN ihale_arac_detaylari ia ON i.id = ia.ihale_id
+        LEFT JOIN ihale_yapi_detaylari iy ON i.id = iy.ihale_id
+        LEFT JOIN ihale_hizmet_detaylari ih ON i.id = ih.ihale_id
+        LEFT JOIN ihale_gorselleri g ON i.id = g.ihale_id
+        WHERE i.aktif = 0 OR i.bitis_tarihi < SYSDATE
+    """
+    params = {}
+
+    if filters:
+        if filters.get("ad"):
+            query += " AND LOWER(i.baslik) LIKE :ad"
+            params["ad"] = f"%{filters['ad'].lower()}%"
+        if filters.get("numara"):
+            query += " AND i.id LIKE :numara"
+            params["numara"] = f"%{filters['numara']}%"
+        if filters.get("icerik"):
+            query += " AND LOWER(i.aciklama) LIKE :icerik"
+            params["icerik"] = f"%{filters['icerik'].lower()}%"
+        if filters.get("yer"):
+            query += " AND LOWER(i.konum) LIKE :yer"
+            params["yer"] = f"%{filters['yer'].lower()}%"
+        if filters.get("minFiyat"):
+            query += " AND i.baslangic_bedeli >= :minFiyat"
+            params["minFiyat"] = filters["minFiyat"]
+        if filters.get("maxFiyat"):
+            query += " AND i.baslangic_bedeli <= :maxFiyat"
+            params["maxFiyat"] = filters["maxFiyat"]
+        if filters.get("kategori"):
+            query += " AND k.kod = :kategori"
+            params["kategori"] = filters["kategori"]
+
+    query += """
+        GROUP BY i.id, i.baslik, i.aciklama, i.konum, i.baslangic_bedeli, 
+                 i.bitis_tarihi, k.kod, ia.yil, ia.km, ia.vites, ia.yakit_turu,
+                 iy.metrekare, iy.oda_sayisi, iy.bina_yasi, ih.hizmet_suresi, ih.kapsam
+    """
+
+    cur = connection.cursor()
+    cur.execute(query, params)
+    rows = cur.fetchall()
+    cur.close()
+    return rows
 
 def get_suresi_gecmis_ihaleler():
     try:

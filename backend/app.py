@@ -71,7 +71,8 @@ from db import (
     db_list_won_auctions,
     db_update_profile,
     db_get_password_hash,
-    db_update_password_hash
+    db_update_password_hash,
+    get_sonuc_ihaleler
 )
 
 SECRET_KEY = 'cok-gizli-anahtarim'
@@ -305,7 +306,8 @@ from flask import jsonify
 @app.route('/ihaleler', methods=['GET'])
 def tum_ihaleleri_getir():
     try:
-        ihaleler = get_all_ihaleler()
+        filters = request.args.to_dict()
+        ihaleler = get_all_ihaleler(filters)
         if not ihaleler:
             return jsonify({"hata": "Hiç ihale bulunamadı"}), 404
         return jsonify(ihaleler), 200
@@ -344,38 +346,42 @@ def kullanici_giris():
     sifre = veri.get("sifre")
 
     if not email or not sifre:
-        return jsonify({"message": "Email ve sifre gerekli"}), 400
+        return jsonify({"message": "Email ve şifre gerekli"}), 400
 
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
 
         cursor.execute("""
-            SELECT id, isim, rol FROM kullanicilar 
-            WHERE email = :1 AND sifre = :2
-        """, (email, sifre))
-
+            SELECT id, isim, rol, sifre FROM kullanicilar 
+            WHERE email = :1
+        """, (email,))
         sonuc = cursor.fetchone()
         cursor.close()
         connection.close()
 
         if sonuc:
-            user_id, isim, rol = sonuc
+            user_id, isim, rol, stored_hash = sonuc
 
-            token = jwt.encode({
-                "id": user_id,
-                "isim": isim,
-                "rol": rol,
-                "exp": datetime.now() + timedelta(hours=2)  
-            }, SECRET_KEY, algorithm="HS256")
+         
+            if bcrypt.checkpw(sifre.encode("utf-8"), stored_hash.encode("utf-8")):
+                token = jwt.encode({
+                    "id": user_id,
+                    "isim": isim,
+                    "rol": rol,
+                    "exp": datetime.now() + timedelta(hours=2)
+                }, SECRET_KEY, algorithm="HS256")
 
-            return jsonify({"token": token})
+                return jsonify({"token": token})
+            else:
+                return jsonify({"message": "Şifre hatalı"}), 401
 
         else:
-            return jsonify({"message": "Email veya sifre hatali"}), 401
+            return jsonify({"message": "Email bulunamadı"}), 401
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
     
 @app.route('/admin/kullanicilar', methods=['GET'])
 @token_gerektiriyor
@@ -467,22 +473,72 @@ def ihale_detay(ihale_id):
             return jsonify({"hata": "İhale bulunamadi"}), 404  
     except Exception as e:
         return jsonify({"hata": str(e)}), 500   
-    
+
 @app.route('/ihaleler/aktif', methods=['GET'])
 def aktif_ihaleleri_getir():
     try:
-        ihaleler = get_aktif_ihaleler()
+        filters = request.args.to_dict()
+        rows = get_aktif_ihaleler(filters)
+
         return jsonify([
             {
-                "id": i[0],
-                "baslik": i[1],
-                "aciklama": i[2],
-                "bitis_tarihi": i[3].strftime('%Y-%m-%d')
+                "id": r[0],
+                "baslik": r[1],
+                "aciklama": r[2],
+                "konum": r[3],
+                "baslangic_bedeli": r[4],
+                "bitis_tarihi": str(r[5]),
+                "kategori_kod": r[6],
+                "yil": r[7],
+                "km": r[8],
+                "vites": r[9],
+                "yakit_turu": r[10],
+                "metrekare": r[11],
+                "oda_sayisi": r[12],
+                "bina_yasi": r[13],
+                "hizmet_suresi": r[14],
+                "kapsam": r[15],
+                "resimler": r[16].split(",") if r[16] else []
             }
-            for i in ihaleler
+            for r in rows
         ])
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("Filtreleme hatası:", e)
+        return jsonify({"hata": str(e)}), 500
+    
+@app.route('/ihaleler/sonuc', methods=['GET'])
+def sonuc_ihaleleri_getir():
+    try:
+        filters = request.args.to_dict()
+        rows = get_sonuc_ihaleler(filters)
+
+        return jsonify([
+            {
+                "id": r[0],
+                "baslik": r[1],
+                "aciklama": r[2],
+                "konum": r[3],
+                "baslangic_bedeli": r[4],
+                "bitis_tarihi": str(r[5]),
+                "kategori_kod": r[6],
+                "yil": r[7],
+                "km": r[8],
+                "vites": r[9],
+                "yakit_turu": r[10],
+                "metrekare": r[11],
+                "oda_sayisi": r[12],
+                "bina_yasi": r[13],
+                "hizmet_suresi": r[14],
+                "kapsam": r[15],
+                "resimler": r[16].split(",") if r[16] else []
+            }
+            for r in rows
+        ])
+    except Exception as e:
+        print("Sonuçlanan ihaleler hatası:", e)
+        return jsonify({"hata": str(e)}), 500
+
+
 
 @app.route('/ihaleler/gecmis', methods=['GET'])
 def gecmis_ihaleleri_getir():
@@ -882,8 +938,8 @@ def uye_ol():
         uid = str(uuid.uuid4())
 
         cur.execute("""
-            INSERT INTO KULLANICILAR (ID, ISIM, SOYAD, EMAIL, TELEFON, SIFRE_HASH, ROL, AKTIF)
-            VALUES (:id, :ISIM, :soyad, :email, :telefon, :sifre, :rol, :aktif)
+            INSERT INTO KULLANICILAR (ID, ISIM, SOYAD, EMAIL, TELEFON, SIFRE, ROL)
+            VALUES (:id, :isim, :soyad, :email, :telefon, :sifre, :rol)
         """, {
             "id": uid,
             "isim": isim,
@@ -891,8 +947,7 @@ def uye_ol():
             "email": email,
             "telefon": telefon,
             "sifre": hashed,
-            "rol": "kullanici",
-            "aktif": 1
+            "rol": "kullanici"
         })
         connection.commit()
         return jsonify({"mesaj": "Kayıt başarılı"}), 201
@@ -901,10 +956,11 @@ def uye_ol():
     except Exception as e:
         connection.rollback()
         print("Üye ol hatası:", e)
+        traceback.print_exc()
         return jsonify({"hata": "Sunucu hatası"}), 500
 
 
 if __name__ == '__main__':
-          app.run(debug=True)
+  app.run(debug=True)
 
 

@@ -9,7 +9,7 @@ export default function UyeOl() {
         isim: "",
         soyad: "",
         email: "",
-        telefon: "+90",
+        telefon: "90",
         sifre: "",
         sifreTekrar: "",
         kosul: false,
@@ -55,7 +55,7 @@ export default function UyeOl() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    ad: form.ad.trim(),
+                    isim: form.isim.trim(),
                     soyad: form.soyad.trim(),
                     email: form.email.trim().toLowerCase(),
                     telefon: form.telefon.trim(),
@@ -99,8 +99,8 @@ export default function UyeOl() {
                                     <span style={st.leftIcon}>👤</span>
                                     <input
                                         name="isim"
-                                        placeholder="Ad *"
-                                        value={form.ad}
+                                        placeholder="Isim *"
+                                        value={form.isim}
                                         onChange={handleChange}
                                         style={st.input}
                                         required

@@ -6,32 +6,52 @@ function Home() {
     const [ihaleler, setIhaleler] = useState([]);
     const navigate = useNavigate();
     const [gelismisGoster, setGelismisGoster] = useState(false);
-    const [ihaleAdi, setIhaleAdi] = useState("");
-    const [ihaleNumarasi, setIhaleNumarasi] = useState("");
-    const [ihaleIcerigi, setIhaleIcerigi] = useState("");
-    const [isletmeMudurlugu, setIsletmeMudurlugu] = useState("");
-    const [bulunduguYer, setBulunduguYer] = useState("");
-    const [ihaleDurumu, setIhaleDurumu] = useState("");
-    const [minFiyat, setMinFiyat] = useState("");
-    const [maxFiyat, setMaxFiyat] = useState("");
     const [sirala, setSirala] = useState("tarih");
+    const [filters, setFilters] = useState({
+        ad: "",
+        numara: "",
+        icerik: "",
+        yer: "",
+        minFiyat: "",
+        maxFiyat: "",
+        kategori: ""
+    });
+
+    const fetchIhaleler = async () => {
+        try {
+            const query = new URLSearchParams(filters).toString();
+            const res = await fetch(`http://localhost:5000/ihaleler?${query}`);
+            const data = await res.json();
+            setIhaleler(data);
+        } catch (err) {
+            console.error("Fetch hatası:", err);
+        }
+    };
 
     useEffect(() => {
-        fetch("http://localhost:5000/ihaleler")
-            .then(res => res.json())
-            .then(data => {
-                console.log("Backend verisi:", data);
-                if (Array.isArray(data)) {
-                    setIhaleler(data);
-                } else {
-                    setIhaleler([]);
-                }
-            })
-            .catch(err => {
-                console.error("Fetch hatası:", err);
-                setIhaleler([]);
-            });
+        fetchIhaleler();
     }, []);
+
+    const handleChange = (e) => {
+        setFilters({ ...filters, [e.target.name]: e.target.value });
+    };
+
+    const handleSearch = () => {
+        fetchIhaleler();
+    };
+
+    const handleClear = () => {
+        setFilters({
+            ad: "",
+            numara: "",
+            icerik: "",
+            yer: "",
+            minFiyat: "",
+            maxFiyat: "",
+            kategori: ""
+        });
+        fetchIhaleler();
+    };
 
     return (
         <>
@@ -39,38 +59,58 @@ function Home() {
             <div style={kapsayiciKart}>
                 <div style={inputGrup}>
                     <input
+                        name="ad"
                         placeholder="İhale Adı"
-                        value={ihaleAdi}
-                        onChange={(e) => setIhaleAdi(e.target.value)}
+                        value={filters.ad}
+                        onChange={handleChange}
                         style={inputStyle}
                     />
                     <input
+                        name="numara"
                         placeholder="İhale Numarası"
-                        value={ihaleNumarasi}
-                        onChange={(e) => setIhaleNumarasi(e.target.value)}
+                        value={filters.numara}
+                        onChange={handleChange}
                         style={inputStyle}
                     />
                     <input
+                        name="icerik"
                         placeholder="İhale İçeriğinde Adı"
-                        value={ihaleIcerigi}
-                        onChange={(e) => setIhaleIcerigi(e.target.value)}
+                        value={filters.icerik}
+                        onChange={handleChange}
                         style={inputStyle}
                     />
                 </div>
                 {gelismisGoster && (
                     <div style={gelismisAlan}>
-                        <input placeholder="İşletme Müdürlüğü" style={inputStyle} value={isletmeMudurlugu} onChange={(e) => setIsletmeMudurlugu(e.target.value)} />
-                        <input placeholder="Bulunduğu Yer" style={inputStyle} value={bulunduguYer} onChange={(e) => setBulunduguYer(e.target.value)} />
-                        <input placeholder="İhale Durumu" style={inputStyle} value={ihaleDurumu} onChange={(e) => setIhaleDurumu(e.target.value)} />
+                        <input
+                            name="yer"
+                            placeholder="Bulunduğu Yer"
+                            style={inputStyle}
+                            value={filters.yer}
+                            onChange={handleChange}
+                        />
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                            <input placeholder="Min TL" value={minFiyat} onChange={(e) => setMinFiyat(e.target.value)} style={{ ...inputStyle, width: "100px" }} />
+                            <input
+                                name="minFiyat"
+                                placeholder="Min TL"
+                                value={filters.minFiyat}
+                                onChange={handleChange}
+                                style={{ ...inputStyle, width: "100px" }}
+                            />
                             <span>–</span>
-                            <input placeholder="Max TL" value={maxFiyat} onChange={(e) => setMaxFiyat(e.target.value)} style={{ ...inputStyle, width: "100px" }} />
+                            <input
+                                name="maxFiyat"
+                                placeholder="Max TL"
+                                value={filters.maxFiyat}
+                                onChange={handleChange}
+                                style={{ ...inputStyle, width: "100px" }}
+                            />
                         </div>
                     </div>
                 )}
                 <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
-                    <button style={temizleButon}>TEMİZLE</button>
+                    <button style={temizleButon} onClick={handleClear}>TEMİZLE</button>
+                    <button style={araButon} onClick={handleSearch}>ARA</button>
                     <button
                         style={araButon}
                         onClick={() => setGelismisGoster(!gelismisGoster)}
